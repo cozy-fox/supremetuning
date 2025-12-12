@@ -1,0 +1,38 @@
+# Dependencies
+node_modules
+npm-debug.log
+
+# Next.js build output
+.next
+out
+
+# IDE and Editor
+.idea
+.vscode
+*.swp
+*.swo
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Refer this folder (not needed in container)
+refer_this
+
+# Environment files (will be passed as environment variables)
+.env*.local
+
+# Testing
+coverage
+
+# Misc
+*.md
+!README.md
+.DS_Store
+Thumbs.db
+
