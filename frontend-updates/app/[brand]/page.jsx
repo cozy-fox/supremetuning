@@ -1,7 +1,6 @@
-import { getBrands, getModels, getBrandByName, getGroups, brandHasGroups } from '@/lib/data';
+import { getBrands, getModels, getGroups, brandHasGroups, getDefaultGroup } from '@/lib/data';
 import { generateMetadata as generateSeoMetadata } from '@/lib/seo';
 import { notFound } from 'next/navigation';
-import Header from '@/components/Header';
 import BrandSelector from './BrandSelector';
 
 // Generate static params for all brands (SSG)
@@ -50,9 +49,6 @@ async function getBrandGroupsForClient(brandId) {
     name: group.name,
     displayName: group.isPerformance ? group.name : 'Standard',
     description: group.description || '',
-    tagline: group.tagline || null,
-    color: group.color || null,
-    icon: group.icon || null,
     logo: group.logo || null,
     isPerformance: group.isPerformance || false,
     order: group.order || 0,
@@ -80,35 +76,32 @@ export default async function BrandPage({ params }) {
   const brandGroups = await getBrandGroupsForClient(brand.id);
 
   return (
-    <>
-      <Header />
-      <main className="container" style={{ padding: '40px 24px' }}>
-        {/* Breadcrumb */}
-        <nav className="breadcrumb">
-          <a href="/">Home</a>
-          <span>›</span>
-          <span className="current">{brand.name}</span>
-        </nav>
+    <main className="container">
+      {/* Breadcrumb */}
+      <nav className="breadcrumb" style={{ paddingTop: '10px' }}>
+        <a href="/">Home</a>
+        <span>›</span>
+        <span className="current">{brand.name}</span>
+      </nav>
 
-        {/* Hero */}
-        <div className="hero-section">
-          <h1>{brand.name} Chiptuning</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto' }}>
-            {brandGroups.hasGroups
-              ? 'Selecteer eerst een categorie, dan uw model, generatie en motor'
-              : 'Selecteer uw model, generatie en motor om de tuning mogelijkheden te bekijken'
-            }
-          </p>
-        </div>
+      {/* Hero */}
+      <div className="hero-section" style={{ padding: '20px 0 15px' }}>
+        <h1>{brand.name} Chiptuning</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', maxWidth: '600px', margin: '0 auto' }}>
+          {brandGroups.hasGroups
+            ? 'Selecteer eerst een categorie, dan uw model, generatie en motor'
+            : 'Selecteer uw model, generatie en motor om de tuning mogelijkheden te bekijken'
+          }
+        </p>
+      </div>
 
-        {/* Client-side selector component */}
-        <BrandSelector
-          brand={brand}
-          models={models}
-          brandGroups={brandGroups}
-        />
-      </main>
-    </>
+      {/* Client-side selector component */}
+      <BrandSelector
+        brand={brand}
+        models={models}
+        brandGroups={brandGroups}
+      />
+    </main>
   );
 }
 

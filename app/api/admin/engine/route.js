@@ -1,7 +1,67 @@
-import { updateById, deleteById, getStages } from '@/lib/data';
+import { updateById, deleteById, getStages, insertOne, findById } from '@/lib/data';
 import { requireAdmin } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
+
+/**
+ * POST /api/admin/engine - Create a new engine
+ */
+export async function POST(request) {
+  const authResult = requireAdmin(request);
+  if (authResult.error) {
+    return NextResponse.json(
+      { message: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
+  try {
+    const { name, typeId, power, torque, type: engineType, description } = await request.json();
+
+    if (!name || !typeId) {
+      return NextResponse.json(
+        { message: 'Engine name and typeId are required' },
+        { status: 400 }
+      );
+    }
+
+    // Get the type to inherit modelId and brandId
+    const typeDoc = await findById('types', parseInt(typeId));
+    if (!typeDoc) {
+      return NextResponse.json(
+        { message: 'Type not found' },
+        { status: 404 }
+      );
+    }
+
+    const slug = name.trim().toLowerCase().replace(/\s+/g, '-');
+
+    const newEngine = {
+      name: name.trim(),
+      slug,
+      typeId: parseInt(typeId),
+      modelId: typeDoc.modelId,
+      brandId: typeDoc.brandId,
+      power: power ? parseInt(power) : null,
+      torque: torque ? parseInt(torque) : null,
+      type: engineType || 'Diesel',
+      description: description || ''
+    };
+
+    const result = await insertOne('engines', newEngine);
+
+    return NextResponse.json({
+      message: 'Engine created successfully',
+      engine: result
+    });
+  } catch (error) {
+    console.error('❌ Create engine error:', error);
+    return NextResponse.json(
+      { message: 'Failed to create engine', error: error.message },
+      { status: 500 }
+    );
+  }
+}
 
 /**
  * PUT /api/admin/engine - Update an engine

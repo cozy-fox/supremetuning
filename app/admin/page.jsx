@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthContext';
 import { useLanguage } from '@/components/LanguageContext';
 import Header from '@/components/Header';
 import {
   Shield, Database, Key, Save, RefreshCw, AlertCircle, Check, ChevronDown, ChevronUp,
-  Download, Upload, Trash2, Car, Archive, Edit2
+  Download, Upload, Trash2, Car, Archive, Edit2, Plus, MoveRight
 } from 'lucide-react';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -28,14 +28,17 @@ export default function AdminPage() {
   // Visual editor state - lazy loading approach
   const [showVisualEditor, setShowVisualEditor] = useState(false);
   const [brands, setBrands] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [models, setModels] = useState([]);
   const [types, setTypes] = useState([]);
   const [engines, setEngines] = useState([]);
   const [selectedBrand, setSelectedBrand] = useState(null);
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
   const [selectedEngine, setSelectedEngine] = useState(null);
   const [brandsLoading, setBrandsLoading] = useState(false);
+  const [groupsLoading, setGroupsLoading] = useState(false);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [typesLoading, setTypesLoading] = useState(false);
   const [enginesLoading, setEnginesLoading] = useState(false);
@@ -46,6 +49,7 @@ export default function AdminPage() {
   // Dialog state
   const [editDialog, setEditDialog] = useState({ show: false, title: '', value: '', onConfirm: null });
   const [deleteDialog, setDeleteDialog] = useState({ show: false, message: '', onConfirm: null });
+  const [moveDialog, setMoveDialog] = useState({ show: false, itemType: '', itemId: null, itemName: '', targets: [] });
 
   // Backup state
   const [showBackups, setShowBackups] = useState(false);
@@ -165,8 +169,29 @@ export default function AdminPage() {
     setBrandsLoading(false);
   };
 
-  // Load models for selected brand
-  const loadModels = async (brandId) => {
+  // Load groups for selected brand
+  const loadGroups = async (brandId) => {
+    setGroupsLoading(true);
+    setGroups([]);
+    setModels([]);
+    setTypes([]);
+    setEngines([]);
+    setSelectedGroup(null);
+    setSelectedModel(null);
+    setSelectedType(null);
+    setSelectedEngine(null);
+    try {
+      const data = await fetchAPI(`groups?brandId=${brandId}`, { isProtected: true });
+      console.log('📊 Loaded groups for brand:', brandId, data.length);
+      setGroups(data);
+    } catch (error) {
+      setDataMessage({ type: 'error', text: 'Failed to load groups: ' + error.message });
+    }
+    setGroupsLoading(false);
+  };
+
+  // Load models for selected brand or group
+  const loadModels = async (brandId, groupId = null) => {
     setModelsLoading(true);
     setModels([]);
     setTypes([]);
@@ -175,8 +200,11 @@ export default function AdminPage() {
     setSelectedType(null);
     setSelectedEngine(null);
     try {
-      const data = await fetchAPI(`models?brandId=${brandId}`, { isProtected: true });
-      console.log('📊 Loaded models for brand:', brandId, data.length);
+      const url = groupId
+        ? `models?groupId=${groupId}`
+        : `models?brandId=${brandId}`;
+      const data = await fetchAPI(url, { isProtected: true });
+      console.log('📊 Loaded models:', data.length);
       setModels(data);
     } catch (error) {
       setDataMessage({ type: 'error', text: 'Failed to load models: ' + error.message });
@@ -226,10 +254,20 @@ export default function AdminPage() {
   // Handle brand selection
   const handleBrandSelect = (brand) => {
     setSelectedBrand(brand);
+    setSelectedGroup(null);
     setSelectedModel(null);
     setSelectedType(null);
     setSelectedEngine(null);
-    loadModels(brand.id);
+    loadGroups(brand.id);
+  };
+
+  // Handle group selection
+  const handleGroupSelect = (group) => {
+    setSelectedGroup(group);
+    setSelectedModel(null);
+    setSelectedType(null);
+    setSelectedEngine(null);
+    loadModels(selectedBrand.id, group.id);
   };
 
   // Handle model selection
@@ -521,6 +559,243 @@ export default function AdminPage() {
     }
   };
 
+  // Delete group (CASCADE: group → models → types → engines → stages)
+  const deleteGroup = async (groupId) => {
+    setDeleteDialog({
+      show: true,
+      message: 'Are you sure you want to delete this group and ALL its data (models, types, engines, stages)?',
+      onConfirm: () => performDeleteGroup(groupId)
+    });
+  };
+
+  const performDeleteGroup = async (groupId) => {
+    try {
+      await fetchAPI(`admin/group?id=${groupId}`, {
+        method: 'DELETE',
+        isProtected: true,
+      });
+
+      // Remove from local state
+      setGroups(groups.filter(g => g.id !== groupId));
+      setSelectedGroup(null);
+      setSelectedModel(null);
+      setSelectedType(null);
+      setSelectedEngine(null);
+      setModels([]);
+      setTypes([]);
+      setEngines([]);
+
+      setDataMessage({ type: 'success', text: 'Group and all related data deleted successfully' });
+      showToast('Group deleted successfully', 'success');
+    } catch (error) {
+      setDataMessage({ type: 'error', text: 'Failed to delete: ' + error.message });
+      showToast('Failed to delete: ' + error.message, 'error');
+    }
+  };
+
+  // Rename group
+  const renameGroup = (groupId, currentName) => {
+    setEditDialog({
+      show: true,
+      title: 'Rename Group',
+      value: currentName,
+      onConfirm: (newName) => performRenameGroup(groupId, newName)
+    });
+  };
+
+  const performRenameGroup = async (groupId, newName) => {
+    if (!newName || newName.trim() === '') return;
+
+    try {
+      await fetchAPI('admin/group', {
+        method: 'PUT',
+        isProtected: true,
+        body: JSON.stringify({ id: groupId, name: newName.trim() }),
+      });
+
+      // Update local state
+      setGroups(groups.map(g =>
+        g.id === groupId
+          ? { ...g, name: newName.trim(), slug: newName.toLowerCase().replace(/\s+/g, '-') }
+          : g
+      ));
+
+      // Update selected group if it's the one being renamed
+      if (selectedGroup?.id === groupId) {
+        setSelectedGroup({ ...selectedGroup, name: newName.trim(), slug: newName.toLowerCase().replace(/\s+/g, '-') });
+      }
+
+      setDataMessage({ type: 'success', text: 'Group renamed successfully' });
+      showToast('Group renamed successfully', 'success');
+    } catch (error) {
+      setDataMessage({ type: 'error', text: 'Failed to rename: ' + error.message });
+    }
+  };
+
+  // Add new group
+  const addGroup = () => {
+    if (!selectedBrand) {
+      showToast('Please select a brand first', 'error');
+      return;
+    }
+
+    setEditDialog({
+      show: true,
+      title: 'Add New Group',
+      value: '',
+      onConfirm: (name) => performAddGroup(name)
+    });
+  };
+
+  const performAddGroup = async (name) => {
+    if (!name || name.trim() === '') return;
+
+    try {
+      const response = await fetchAPI('admin/group', {
+        method: 'POST',
+        isProtected: true,
+        body: JSON.stringify({
+          brandId: selectedBrand.id,
+          name: name.trim(),
+          isPerformance: false,
+          order: groups.length
+        }),
+      });
+
+      // Add to local state
+      const newGroup = response.group;
+      setGroups([...groups, newGroup]);
+
+      setDataMessage({ type: 'success', text: 'Group added successfully' });
+      showToast('Group added successfully', 'success');
+    } catch (error) {
+      setDataMessage({ type: 'error', text: 'Failed to add group: ' + error.message });
+      showToast('Failed to add group: ' + error.message, 'error');
+    }
+  };
+
+  // Add new model
+  const addModel = () => {
+    if (!selectedGroup) {
+      showToast('Please select a group first', 'error');
+      return;
+    }
+
+    setEditDialog({
+      show: true,
+      title: 'Add New Model',
+      value: '',
+      onConfirm: (name) => performAddModel(name)
+    });
+  };
+
+  const performAddModel = async (name) => {
+    if (!name || name.trim() === '') return;
+
+    try {
+      const response = await fetchAPI('admin/model', {
+        method: 'POST',
+        isProtected: true,
+        body: JSON.stringify({
+          brandId: selectedBrand.id,
+          groupId: selectedGroup.id,
+          name: name.trim()
+        }),
+      });
+
+      // Add to local state
+      const newModel = response.model;
+      setModels([...models, newModel]);
+
+      setDataMessage({ type: 'success', text: 'Model added successfully' });
+      showToast('Model added successfully', 'success');
+    } catch (error) {
+      setDataMessage({ type: 'error', text: 'Failed to add model: ' + error.message });
+      showToast('Failed to add model: ' + error.message, 'error');
+    }
+  };
+
+  // Add new type/generation
+  const addType = () => {
+    if (!selectedModel) {
+      showToast('Please select a model first', 'error');
+      return;
+    }
+
+    setEditDialog({
+      show: true,
+      title: 'Add New Generation',
+      value: '',
+      onConfirm: (name) => performAddType(name)
+    });
+  };
+
+  const performAddType = async (name) => {
+    if (!name || name.trim() === '') return;
+
+    try {
+      const response = await fetchAPI('admin/type', {
+        method: 'POST',
+        isProtected: true,
+        body: JSON.stringify({
+          modelId: selectedModel.id,
+          name: name.trim()
+        }),
+      });
+
+      // Add to local state
+      const newType = response.type;
+      setTypes([...types, newType]);
+
+      setDataMessage({ type: 'success', text: 'Generation added successfully' });
+      showToast('Generation added successfully', 'success');
+    } catch (error) {
+      setDataMessage({ type: 'error', text: 'Failed to add generation: ' + error.message });
+      showToast('Failed to add generation: ' + error.message, 'error');
+    }
+  };
+
+  // Add new engine
+  const addEngine = () => {
+    if (!selectedType) {
+      showToast('Please select a generation first', 'error');
+      return;
+    }
+
+    setEditDialog({
+      show: true,
+      title: 'Add New Engine',
+      value: '',
+      onConfirm: (name) => performAddEngine(name)
+    });
+  };
+
+  const performAddEngine = async (name) => {
+    if (!name || name.trim() === '') return;
+
+    try {
+      const response = await fetchAPI('admin/engine', {
+        method: 'POST',
+        isProtected: true,
+        body: JSON.stringify({
+          typeId: selectedType.id,
+          name: name.trim(),
+          type: 'Diesel'  // Default engine type
+        }),
+      });
+
+      // Add to local state
+      const newEngine = response.engine;
+      setEngines([...engines, newEngine]);
+
+      setDataMessage({ type: 'success', text: 'Engine added successfully' });
+      showToast('Engine added successfully', 'success');
+    } catch (error) {
+      setDataMessage({ type: 'error', text: 'Failed to add engine: ' + error.message });
+      showToast('Failed to add engine: ' + error.message, 'error');
+    }
+  };
+
   // Rename model
   const renameModel = (modelId, currentName) => {
     setEditDialog({
@@ -638,6 +913,176 @@ export default function AdminPage() {
     }
   };
 
+  // Move item to different parent (same level only)
+  const moveItem = async (itemType, itemId, targetParentType, targetParentId) => {
+    try {
+      await fetchAPI('admin/move', {
+        method: 'POST',
+        isProtected: true,
+        body: JSON.stringify({
+          itemType,
+          itemId,
+          targetParentType,
+          targetParentId
+        }),
+      });
+
+      setDataMessage({ type: 'success', text: `${itemType} moved successfully` });
+      showToast(`${itemType} moved successfully`, 'success');
+      setMoveDialog({ show: false, itemType: '', itemId: null, itemName: '', targets: [] });
+
+      // Reload the appropriate data
+      if (itemType === 'model' && selectedBrand) {
+        if (selectedGroup) {
+          await loadModels(selectedBrand.id, selectedGroup.id);
+        } else {
+          await loadGroups(selectedBrand.id);
+        }
+      } else if (itemType === 'type' && selectedModel) {
+        await loadTypes(selectedModel.id);
+      } else if (itemType === 'engine' && selectedType) {
+        await loadEngines(selectedType.id);
+      }
+    } catch (error) {
+      setDataMessage({ type: 'error', text: 'Failed to move: ' + error.message });
+      showToast('Failed to move: ' + error.message, 'error');
+    }
+  };
+
+  // Open move dialog for model (move to any group across all brands)
+  const openMoveModelDialog = async (model) => {
+    try {
+      // Fetch ALL groups from all brands
+      const allGroups = await fetchAPI('groups');
+
+      // Filter out the current group
+      const targetGroups = allGroups.filter(g => g.id !== model.groupId);
+
+      if (targetGroups.length === 0) {
+        showToast('No other groups available to move to', 'error');
+        return;
+      }
+
+      // Organize groups by brand for better UX
+      const groupedTargets = targetGroups.map(g => {
+        const brandName = brands.find(b => b.id === g.brandId)?.name || 'Unknown';
+        return {
+          id: g.id,
+          name: `${brandName} → ${g.name}`,
+          type: 'group',
+          brandId: g.brandId
+        };
+      });
+
+      setMoveDialog({
+        show: true,
+        itemType: 'model',
+        itemId: model.id,
+        itemName: model.name,
+        targets: groupedTargets
+      });
+    } catch (error) {
+      showToast('Failed to load groups: ' + error.message, 'error');
+    }
+  };
+
+  // Open move dialog for type (move to any model across all brands/groups)
+  const openMoveTypeDialog = async (type) => {
+    try {
+      // Fetch ALL models from all brands
+      const allModels = await fetchAPI('models');
+
+      // Filter out the current model
+      const targetModels = allModels.filter(m => m.id !== type.modelId);
+
+      if (targetModels.length === 0) {
+        showToast('No other models available to move to', 'error');
+        return;
+      }
+
+      // Organize models by brand and group for better UX
+      const groupedTargets = await Promise.all(targetModels.map(async (m) => {
+        const brandName = brands.find(b => b.id === m.brandId)?.name || 'Unknown';
+        let groupName = '';
+
+        if (m.groupId) {
+          try {
+            const allGroups = await fetchAPI('groups');
+            const group = allGroups.find(g => g.id === m.groupId);
+            groupName = group ? ` (${group.name})` : '';
+          } catch (e) {
+            // Ignore group fetch errors
+          }
+        }
+
+        return {
+          id: m.id,
+          name: `${brandName}${groupName} → ${m.name}`,
+          type: 'model',
+          brandId: m.brandId
+        };
+      }));
+
+      setMoveDialog({
+        show: true,
+        itemType: 'type',
+        itemId: type.id,
+        itemName: type.name,
+        targets: groupedTargets
+      });
+    } catch (error) {
+      showToast('Failed to load models: ' + error.message, 'error');
+    }
+  };
+
+  // Open move dialog for engine (move to any type across all brands/models)
+  const openMoveEngineDialog = async (engine) => {
+    try {
+      // Fetch ALL types from all models
+      const allTypes = await fetchAPI('types');
+
+      // Filter out the current type
+      const targetTypes = allTypes.filter(t => t.id !== engine.typeId);
+
+      if (targetTypes.length === 0) {
+        showToast('No other generations available to move to', 'error');
+        return;
+      }
+
+      // Organize types by brand and model for better UX
+      const groupedTargets = await Promise.all(targetTypes.map(async (t) => {
+        const brandName = brands.find(b => b.id === t.brandId)?.name || 'Unknown';
+        let modelName = '';
+
+        try {
+          const allModels = await fetchAPI('models');
+          const model = allModels.find(m => m.id === t.modelId);
+          modelName = model ? model.name : 'Unknown Model';
+        } catch (e) {
+          modelName = 'Unknown Model';
+        }
+
+        return {
+          id: t.id,
+          name: `${brandName} → ${modelName} → ${t.name}`,
+          type: 'type',
+          brandId: t.brandId,
+          modelId: t.modelId
+        };
+      }));
+
+      setMoveDialog({
+        show: true,
+        itemType: 'engine',
+        itemId: engine.id,
+        itemName: engine.name,
+        targets: groupedTargets
+      });
+    } catch (error) {
+      showToast('Failed to load generations: ' + error.message, 'error');
+    }
+  };
+
   if (isLoading) {
     return (
       <>
@@ -694,24 +1139,37 @@ export default function AdminPage() {
           showVisualEditor={showVisualEditor}
           setShowVisualEditor={setShowVisualEditor}
           brands={brands}
+          groups={groups}
           models={models}
           types={types}
           engines={engines}
           brandsLoading={brandsLoading}
+          groupsLoading={groupsLoading}
           modelsLoading={modelsLoading}
           typesLoading={typesLoading}
           enginesLoading={enginesLoading}
           dataMessage={dataMessage}
           deleteBrand={deleteBrand}
+          deleteGroup={deleteGroup}
           deleteModel={deleteModel}
           deleteType={deleteType}
           deleteEngine={deleteEngine}
           renameBrand={renameBrand}
+          renameGroup={renameGroup}
           renameModel={renameModel}
           renameType={renameType}
           renameEngine={renameEngine}
+          addGroup={addGroup}
+          addModel={addModel}
+          addType={addType}
+          addEngine={addEngine}
+          openMoveModelDialog={openMoveModelDialog}
+          openMoveTypeDialog={openMoveTypeDialog}
+          openMoveEngineDialog={openMoveEngineDialog}
           selectedBrand={selectedBrand}
           handleBrandSelect={handleBrandSelect}
+          selectedGroup={selectedGroup}
+          handleGroupSelect={handleGroupSelect}
           selectedModel={selectedModel}
           handleModelSelect={handleModelSelect}
           selectedType={selectedType}
@@ -783,7 +1241,134 @@ export default function AdminPage() {
         }}
         onCancel={() => setEditDialog({ show: false, title: '', value: '', onConfirm: null })}
       />
+
+      {/* Move Dialog */}
+      {moveDialog.show && <MoveDialog
+        moveDialog={moveDialog}
+        setMoveDialog={setMoveDialog}
+        moveItem={moveItem}
+      />}
     </>
+  );
+}
+
+// Move Dialog Component with Search
+function MoveDialog({ moveDialog, setMoveDialog, moveItem }) {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredTargets = useMemo(() => {
+    if (!searchTerm) return moveDialog.targets;
+    return moveDialog.targets.filter(target =>
+      target.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [moveDialog.targets, searchTerm]);
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0,0,0,0.7)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000
+    }}>
+      <div style={{
+        background: 'var(--card-bg)',
+        borderRadius: '12px',
+        padding: '24px',
+        maxWidth: '500px',
+        width: '90%',
+        border: '1px solid var(--border)',
+        maxHeight: '80vh',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        <h3 style={{ margin: '0 0 8px 0' }}>
+          Move "{moveDialog.itemName}"
+        </h3>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '16px', fontSize: '0.9rem' }}>
+          Select destination ({moveDialog.targets.length} available):
+        </p>
+
+        {/* Search Input */}
+        <input
+          type="text"
+          placeholder="Search destinations..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '10px 12px',
+            marginBottom: '16px',
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
+            color: 'var(--text)',
+            fontSize: '0.9rem'
+          }}
+        />
+
+        {/* Targets List */}
+        <div style={{
+          maxHeight: '400px',
+          overflowY: 'auto',
+          marginBottom: '16px',
+          flex: 1
+        }}>
+          {filteredTargets.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>
+              No destinations found
+            </p>
+          ) : (
+            filteredTargets.map(target => (
+              <button
+                key={target.id}
+                onClick={() => moveItem(moveDialog.itemType, moveDialog.itemId, target.type, target.id)}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '12px',
+                  marginBottom: '8px',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  color: 'var(--text)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'background 0.2s',
+                  fontSize: '0.9rem'
+                }}
+                onMouseOver={(e) => e.target.style.background = 'rgba(184, 192, 200, 0.2)'}
+                onMouseOut={(e) => e.target.style.background = 'rgba(255,255,255,0.05)'}
+              >
+                {target.name}
+              </button>
+            ))
+          )}
+        </div>
+
+        {/* Cancel Button */}
+        <button
+          onClick={() => setMoveDialog({ show: false, itemType: '', itemId: null, itemName: '', targets: [] })}
+          style={{
+            width: '100%',
+            padding: '12px',
+            background: 'transparent',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
+            color: 'var(--text)',
+            cursor: 'pointer',
+            fontSize: '0.9rem'
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -959,12 +1544,15 @@ function BackupSection({
 // Visual Editor Section Component
 function VisualEditorSection({
   showVisualEditor, setShowVisualEditor,
-  brands, models, types, engines,
-  brandsLoading, modelsLoading, typesLoading, enginesLoading,
+  brands, groups, models, types, engines,
+  brandsLoading, groupsLoading, modelsLoading, typesLoading, enginesLoading,
   dataMessage,
-  deleteBrand, deleteModel, deleteType, deleteEngine,
-  renameBrand, renameModel, renameType, renameEngine,
+  deleteBrand, deleteGroup, deleteModel, deleteType, deleteEngine,
+  renameBrand, renameGroup, renameModel, renameType, renameEngine,
+  addGroup, addModel, addType, addEngine,
+  openMoveModelDialog, openMoveTypeDialog, openMoveEngineDialog,
   selectedBrand, handleBrandSelect,
+  selectedGroup, handleGroupSelect,
   selectedModel, handleModelSelect,
   selectedType, handleTypeSelect,
   selectedEngine, handleEngineSelect
@@ -1077,12 +1665,121 @@ function VisualEditorSection({
                 </div>
               </div>
 
-              {/* Models List */}
+              {/* Groups List */}
               {selectedBrand && (
                 <div style={{ background: 'rgba(50, 55, 60, 0.3)', borderRadius: '8px', padding: '16px' }}>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', color: 'var(--primary)' }}>
-                    Models - {selectedBrand.name} ({models?.length || 0})
-                  </h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--primary)' }}>
+                      Groups - {selectedBrand.name} ({groups?.length || 0})
+                    </h4>
+                    <button
+                      onClick={addGroup}
+                      style={{
+                        background: 'var(--primary)',
+                        border: 'none',
+                        color: '#1a1a1a',
+                        cursor: 'pointer',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold'
+                      }}
+                      title="Add new group"
+                    >
+                      + Add Group
+                    </button>
+                  </div>
+                  {groupsLoading ? (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                      <RefreshCw size={16} className="spin" />
+                    </div>
+                  ) : (
+                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                      {groups?.map(group => (
+                        <div
+                          key={group.id}
+                          style={{
+                            padding: '8px',
+                            marginBottom: '4px',
+                            background: selectedGroup?.id === group.id ? 'rgba(184, 192, 200, 0.2)' : 'rgba(255,255,255,0.05)',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}
+                          onClick={() => handleGroupSelect(group)}
+                        >
+                          <span style={{ fontSize: '0.85rem', flex: 1 }}>
+                            {group.name} {group.isPerformance && '⚡'}
+                          </span>
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                renameGroup(group.id, group.name);
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#00ff88',
+                                cursor: 'pointer',
+                                padding: '4px'
+                              }}
+                              title="Rename group"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteGroup(group.id);
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#ff4444',
+                                cursor: 'pointer',
+                                padding: '4px'
+                              }}
+                              title="Delete group"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Models List */}
+              {selectedGroup && (
+                <div style={{ background: 'rgba(50, 55, 60, 0.3)', borderRadius: '8px', padding: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--primary)' }}>
+                      Models - {selectedGroup.name} ({models?.length || 0})
+                    </h4>
+                    <button
+                      onClick={addModel}
+                      style={{
+                        background: 'var(--primary)',
+                        border: 'none',
+                        color: '#1a1a1a',
+                        cursor: 'pointer',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                      title="Add new model"
+                    >
+                      <Plus size={12} /> Add
+                    </button>
+                  </div>
                   {modelsLoading ? (
                     <div style={{ textAlign: 'center', padding: '20px' }}>
                       <RefreshCw size={16} className="spin" />
@@ -1106,6 +1803,22 @@ function VisualEditorSection({
                       >
                         <span style={{ fontSize: '0.85rem', flex: 1 }}>{model.name}</span>
                         <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openMoveModelDialog(model);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#4488ff',
+                              cursor: 'pointer',
+                              padding: '4px'
+                            }}
+                            title="Move to another group"
+                          >
+                            <MoveRight size={14} />
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1149,9 +1862,29 @@ function VisualEditorSection({
               {/* Types/Generations List */}
               {selectedModel && (
                 <div style={{ background: 'rgba(50, 55, 60, 0.3)', borderRadius: '8px', padding: '16px' }}>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', color: 'var(--primary)' }}>
-                    Generations - {selectedModel.name} ({types?.length || 0})
-                  </h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--primary)' }}>
+                      Generations - {selectedModel.name} ({types?.length || 0})
+                    </h4>
+                    <button
+                      onClick={addType}
+                      style={{
+                        background: 'var(--primary)',
+                        border: 'none',
+                        color: '#1a1a1a',
+                        cursor: 'pointer',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                      title="Add new generation"
+                    >
+                      <Plus size={12} /> Add
+                    </button>
+                  </div>
                   {typesLoading ? (
                     <div style={{ textAlign: 'center', padding: '20px' }}>
                       <RefreshCw size={16} className="spin" />
@@ -1175,6 +1908,22 @@ function VisualEditorSection({
                         >
                         <span style={{ fontSize: '0.85rem', flex: 1 }}>{type.name}</span>
                         <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openMoveTypeDialog(type);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#4488ff',
+                              cursor: 'pointer',
+                              padding: '4px'
+                            }}
+                            title="Move to another model"
+                          >
+                            <MoveRight size={14} />
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1218,9 +1967,29 @@ function VisualEditorSection({
               {/* Engines List */}
               {selectedType && (
                 <div style={{ background: 'rgba(50, 55, 60, 0.3)', borderRadius: '8px', padding: '16px' }}>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', color: 'var(--primary)' }}>
-                    Engines - {selectedType.name} ({engines?.length || 0})
-                  </h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--primary)' }}>
+                      Engines - {selectedType.name} ({engines?.length || 0})
+                    </h4>
+                    <button
+                      onClick={addEngine}
+                      style={{
+                        background: 'var(--primary)',
+                        border: 'none',
+                        color: '#1a1a1a',
+                        cursor: 'pointer',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                      title="Add new engine"
+                    >
+                      <Plus size={12} /> Add
+                    </button>
+                  </div>
                   {enginesLoading ? (
                     <div style={{ textAlign: 'center', padding: '20px' }}>
                       <RefreshCw size={16} className="spin" />
@@ -1249,6 +2018,22 @@ function VisualEditorSection({
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openMoveEngineDialog(engine);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#4488ff',
+                              cursor: 'pointer',
+                              padding: '4px'
+                            }}
+                            title="Move to another generation"
+                          >
+                            <MoveRight size={14} />
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

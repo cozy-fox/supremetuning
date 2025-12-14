@@ -1,7 +1,53 @@
-import { updateById, deleteById, getTypes, getEngines, getStages } from '@/lib/data';
+import { updateById, deleteById, getTypes, getEngines, getStages, insertOne } from '@/lib/data';
 import { requireAdmin } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
+
+/**
+ * POST /api/admin/model - Create a new model
+ */
+export async function POST(request) {
+  const authResult = requireAdmin(request);
+  if (authResult.error) {
+    return NextResponse.json(
+      { message: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
+  try {
+    const { name, brandId, groupId } = await request.json();
+
+    if (!name || !brandId) {
+      return NextResponse.json(
+        { message: 'Model name and brandId are required' },
+        { status: 400 }
+      );
+    }
+
+    const slug = name.trim().toLowerCase().replace(/\s+/g, '-');
+
+    const newModel = {
+      name: name.trim(),
+      slug,
+      brandId: parseInt(brandId),
+      groupId: groupId ? parseInt(groupId) : null
+    };
+
+    const result = await insertOne('models', newModel);
+
+    return NextResponse.json({
+      message: 'Model created successfully',
+      model: result
+    });
+  } catch (error) {
+    console.error('❌ Create model error:', error);
+    return NextResponse.json(
+      { message: 'Failed to create model', error: error.message },
+      { status: 500 }
+    );
+  }
+}
 
 /**
  * PUT /api/admin/model - Update a model

@@ -1,7 +1,62 @@
-import { updateById, deleteById, getEngines, getStages } from '@/lib/data';
+import { updateById, deleteById, getEngines, getStages, insertOne, findById } from '@/lib/data';
 import { requireAdmin } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
+
+/**
+ * POST /api/admin/type - Create a new type/generation
+ */
+export async function POST(request) {
+  const authResult = requireAdmin(request);
+  if (authResult.error) {
+    return NextResponse.json(
+      { message: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
+  try {
+    const { name, modelId } = await request.json();
+
+    if (!name || !modelId) {
+      return NextResponse.json(
+        { message: 'Type name and modelId are required' },
+        { status: 400 }
+      );
+    }
+
+    // Get the model to inherit brandId
+    const model = await findById('models', parseInt(modelId));
+    if (!model) {
+      return NextResponse.json(
+        { message: 'Model not found' },
+        { status: 404 }
+      );
+    }
+
+    const slug = name.trim().toLowerCase().replace(/\s+/g, '-');
+
+    const newType = {
+      name: name.trim(),
+      slug,
+      modelId: parseInt(modelId),
+      brandId: model.brandId
+    };
+
+    const result = await insertOne('types', newType);
+
+    return NextResponse.json({
+      message: 'Type created successfully',
+      type: result
+    });
+  } catch (error) {
+    console.error('❌ Create type error:', error);
+    return NextResponse.json(
+      { message: 'Failed to create type', error: error.message },
+      { status: 500 }
+    );
+  }
+}
 
 /**
  * PUT /api/admin/type - Update a type/generation
