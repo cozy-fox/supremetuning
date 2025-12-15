@@ -1,6 +1,7 @@
 import './globals.css';
 import { AuthProvider } from '@/components/AuthContext';
 import { LanguageProvider } from '@/components/LanguageContext';
+import { ProgressProvider } from '@/components/ProgressContext';
 
 export const metadata = {
   title: {
@@ -52,9 +53,11 @@ export default function RootLayout({ children }) {
       <body className="notranslate" translate="no">
         <LanguageProvider>
           <AuthProvider>
-            <div id="root">
-              {children}
-            </div>
+            <ProgressProvider>
+              <div id="root">
+                {children}
+              </div>
+            </ProgressProvider>
           </AuthProvider>
         </LanguageProvider>
       </body>

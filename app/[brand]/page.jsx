@@ -3,6 +3,7 @@ import { generateMetadata as generateSeoMetadata } from '@/lib/seo';
 import { notFound } from 'next/navigation';
 import Header from '@/components/Header';
 import BrandSelector from './BrandSelector';
+import BrandHero from './BrandHero';
 
 // Generate static params for all brands (SSG)
 export async function generateStaticParams() {
@@ -90,16 +91,8 @@ export default async function BrandPage({ params }) {
           <span className="current">{brand.name}</span>
         </nav>
 
-        {/* Hero */}
-        <div className="hero-section">
-          <h1>{brand.name} Chiptuning</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto' }}>
-            {brandGroups.hasGroups
-              ? 'Selecteer eerst een categorie, dan uw model, generatie en motor'
-              : 'Selecteer uw model, generatie en motor om de tuning mogelijkheden te bekijken'
-            }
-          </p>
-        </div>
+        {/* Hero with translations */}
+        <BrandHero brandName={brand.name} hasGroups={brandGroups.hasGroups} />
 
         {/* Client-side selector component */}
         <BrandSelector

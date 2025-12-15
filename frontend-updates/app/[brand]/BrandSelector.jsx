@@ -160,9 +160,9 @@ export default function BrandSelector({ brand, models: initialModels, brandGroup
                 // Use color from database if available, otherwise use defaults
                 const activeColor = group.color || (() => {
                   const groupName = (group.name || '').toUpperCase();
-                  if (groupName === 'RS') return '#ff0000';
-                  if (groupName === 'M') return '#0066cc';
-                  if (groupName === 'AMG') return '#00d4aa';
+                  // if (groupName === 'RS') return '#ff0000';
+                  // if (groupName === 'M') return '#0066cc';
+                  // if (groupName === 'AMG') return '#00d4aa';
                   return 'var(--primary)';
                 })();
 
@@ -181,9 +181,6 @@ export default function BrandSelector({ brand, models: initialModels, brandGroup
                 // Use icon from database if available, otherwise use defaults
                 if (group.icon) return group.icon;
                 const groupName = (group.name || '').toUpperCase();
-                if (groupName === 'RS') return '🏁';
-                if (groupName === 'M') return '🏎️';
-                if (groupName === 'AMG') return '⚡';
                 return null;
               };
 
@@ -191,9 +188,9 @@ export default function BrandSelector({ brand, models: initialModels, brandGroup
                 // Use color from database if available
                 if (group.color) return group.color;
                 const groupName = (group.name || '').toUpperCase();
-                if (groupName === 'RS') return '#ff0000';
-                if (groupName === 'M') return '#0066cc';
-                if (groupName === 'AMG') return '#00d4aa';
+                // if (groupName === 'RS') return '#ff0000';
+                // if (groupName === 'M') return '#0066cc';
+                // if (groupName === 'AMG') return '#00d4aa';
                 return 'var(--primary)';
               };
 
@@ -203,7 +200,7 @@ export default function BrandSelector({ brand, models: initialModels, brandGroup
                   style={getGroupStyle()}
                   onClick={() => handleGroup(group.id)}
                 >
-                  {group.isPerformance && <span style={{ fontSize: '1.2rem' }}>{getGroupIcon()}</span>}
+                  {/* {group.isPerformance && <span style={{ fontSize: '1.2rem' }}>{getGroupIcon()}</span>} */}
                   {group.isPerformance && <Zap size={16} />}
                   <span>{group.displayName || group.name}</span>
                 </button>
@@ -271,8 +268,10 @@ export default function BrandSelector({ brand, models: initialModels, brandGroup
           >
             <option value="">{t('selectEngine')}</option>
             {filteredEngines.map(e => (
+              
               <option key={e.id} value={e.id}>
-                {e.name}{e.power ? ` ${e.power}${t('enginePowerUnit')}` : ''} - {e.description} ({e.type})
+                {e.name}{e.power ? ` ${e.power}` : ''}{t('enginePowerUnit')}  - {e.description} ({e.type})
+                
               </option>
             ))}
           </select>

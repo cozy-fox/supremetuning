@@ -89,8 +89,8 @@ export default async function BrandPage({ params }) {
         <h1>{brand.name} Chiptuning</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', maxWidth: '600px', margin: '0 auto' }}>
           {brandGroups.hasGroups
-            ? 'Selecteer eerst een categorie, dan uw model, generatie en motor'
-            : 'Selecteer uw model, generatie en motor om de tuning mogelijkheden te bekijken'
+            ? t('selectGroup')
+            : t('selectModel')
           }
         </p>
       </div>

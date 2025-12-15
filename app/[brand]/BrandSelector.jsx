@@ -131,63 +131,79 @@ export default function BrandSelector({ brand, models: initialModels, brandGroup
     <div className="selector-container animate-in" style={{ marginTop: '32px' }}>
       {/* Group Selection for brands with performance divisions */}
       {hasGroups && (
-        <div className="group-selector-row" style={{ marginBottom: '24px' }}>
-          <div className="group-buttons" style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div className="group-selector-row" style={{ marginBottom: '32px' }}>
+          <div className="group-buttons" style={{
+            display: 'flex',
+            gap: '16px',
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+            padding: '8px'
+          }}>
             {groups.map(group => {
               // Performance group styling
               const getGroupStyle = () => {
+                const isSelected = selGroup === group.id;
                 const baseStyle = {
-                  padding: '12px 24px',
-                  borderRadius: '8px',
+                  padding: '16px 32px',
+                  borderRadius: '12px',
                   border: 'none',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  fontSize: '1rem',
+                  gap: '10px',
+                  fontSize: '1.05rem',
                   fontWeight: '600',
-                  transition: 'all 0.2s ease',
-                  minWidth: '120px',
-                  justifyContent: 'center'
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  minWidth: '140px',
+                  justifyContent: 'center',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
                 };
 
                 if (!group.isPerformance) {
                   return {
                     ...baseStyle,
-                    background: selGroup === group.id ? 'rgba(184, 192, 200, 0.3)' : 'rgba(255,255,255,0.1)',
-                    color: selGroup === group.id ? '#fff' : 'rgba(255,255,255,0.7)',
-                    border: selGroup === group.id ? '2px solid var(--primary)' : '2px solid transparent'
+                    background: isSelected
+                      ? 'linear-gradient(135deg, rgba(184, 192, 200, 0.25) 0%, rgba(184, 192, 200, 0.15) 100%)'
+                      : 'rgba(255,255,255,0.08)',
+                    color: isSelected ? '#fff' : 'rgba(255,255,255,0.7)',
+                    border: isSelected ? '2px solid var(--primary)' : '2px solid rgba(255,255,255,0.15)',
+                    boxShadow: isSelected
+                      ? '0 8px 24px rgba(184, 192, 200, 0.3), 0 0 0 1px rgba(184, 192, 200, 0.1) inset'
+                      : '0 2px 8px rgba(0,0,0,0.1)',
+                    transform: isSelected ? 'translateY(-2px) scale(1.02)' : 'translateY(0) scale(1)'
                   };
                 }
 
                 // Use color from database if available, otherwise use defaults
-                const activeColor = group.color || (() => {
-                  const groupName = (group.name || '').toUpperCase();
-                  if (groupName === 'RS') return '#ff0000';
-                  if (groupName === 'M') return '#0066cc';
-                  if (groupName === 'AMG') return '#00d4aa';
-                  return 'var(--primary)';
-                })();
-
-                const bgColor = 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)';
+                const activeColor = group.color || 'var(--primary)';
 
                 return {
                   ...baseStyle,
-                  background: bgColor,
-                  color: selGroup === group.id ? activeColor : 'rgba(255,255,255,0.9)',
-                  border: selGroup === group.id ? `2px solid ${activeColor}` : '2px solid rgba(255,255,255,0.2)',
-                  boxShadow: selGroup === group.id ? `0 0 20px ${activeColor}40` : 'none'
+                  background: isSelected
+                    ? `linear-gradient(135deg, ${activeColor}25 0%, ${activeColor}15 100%)`
+                    : 'linear-gradient(135deg, rgba(30, 30, 30, 0.9) 0%, rgba(20, 20, 20, 0.9) 100%)',
+                  color: isSelected ? activeColor : 'rgba(255,255,255,0.85)',
+                  border: isSelected
+                    ? `2px solid ${activeColor}`
+                    : '2px solid rgba(255,255,255,0.2)',
+                  boxShadow: isSelected
+                    ? `0 8px 32px ${activeColor}40, 0 0 0 1px ${activeColor}20 inset`
+                    : '0 4px 12px rgba(0,0,0,0.3)',
+                  transform: isSelected ? 'translateY(-3px) scale(1.05)' : 'translateY(0) scale(1)',
+                  backdropFilter: 'blur(10px)'
                 };
               };
 
-              const getGroupIcon = () => {
-                // Use icon from database if available, otherwise use defaults
-                if (group.icon) return group.icon;
-                const groupName = (group.name || '').toUpperCase();
-                if (groupName === 'RS') return '🏁';
-                if (groupName === 'M') return '🏎️';
-                if (groupName === 'AMG') return '⚡';
-                return null;
+              const getHoverStyle = () => {
+                return {
+                  transform: selGroup === group.id ? 'translateY(-3px) scale(1.05)' : 'translateY(-2px) scale(1.02)',
+                  boxShadow: group.isPerformance
+                    ? `0 12px 40px ${group.color || 'var(--primary)'}50`
+                    : '0 8px 24px rgba(184, 192, 200, 0.4)'
+                };
               };
 
               return (
@@ -195,9 +211,14 @@ export default function BrandSelector({ brand, models: initialModels, brandGroup
                   key={group.id}
                   style={getGroupStyle()}
                   onClick={() => handleGroup(group.id)}
+                  onMouseEnter={(e) => {
+                    Object.assign(e.currentTarget.style, getHoverStyle());
+                  }}
+                  onMouseLeave={(e) => {
+                    Object.assign(e.currentTarget.style, getGroupStyle());
+                  }}
                 >
-                  {group.isPerformance && getGroupIcon() && <span style={{ fontSize: '1.2rem' }}>{getGroupIcon()}</span>}
-                  {group.isPerformance && <Zap size={16} />}
+                  {group.isPerformance && <Zap size={18} style={{ filter: 'drop-shadow(0 0 4px currentColor)' }} />}
                   <span>{group.displayName || group.name}</span>
                 </button>
               );
@@ -220,7 +241,7 @@ export default function BrandSelector({ brand, models: initialModels, brandGroup
             disabled={loading || (hasGroups && !selGroup)}
             className="selector-select"
           >
-            <option value="">{hasGroups && !selGroup ? t('selectGroupFirst') || 'Select category first' : t('selectModel')}</option>
+            <option value="">{t('selectModel')}</option>
             {filteredModels.map(m => (
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}

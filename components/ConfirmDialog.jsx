@@ -5,6 +5,12 @@ import { AlertTriangle } from 'lucide-react';
 export default function ConfirmDialog({ show, message, onConfirm, onCancel, confirmText = 'Delete', cancelText = 'Cancel' }) {
   if (!show) return null;
 
+  // Determine if this is a delete action based on confirmText
+  const isDeleteAction = confirmText === 'Delete';
+  const iconColor = isDeleteAction ? '#ff4444' : '#00ff88';
+  const iconBgColor = isDeleteAction ? 'rgba(255, 68, 68, 0.1)' : 'rgba(0, 255, 136, 0.1)';
+  const buttonColor = isDeleteAction ? '#ff4444' : '#00ff88';
+
   return (
     <div
       style={{
@@ -38,7 +44,7 @@ export default function ConfirmDialog({ show, message, onConfirm, onCancel, conf
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div
             style={{
-              background: 'rgba(255, 68, 68, 0.1)',
+              background: iconBgColor,
               borderRadius: '50%',
               width: '64px',
               height: '64px',
@@ -48,7 +54,7 @@ export default function ConfirmDialog({ show, message, onConfirm, onCancel, conf
               margin: '0 auto 16px'
             }}
           >
-            <AlertTriangle size={32} color="#ff4444" />
+            <AlertTriangle size={32} color={iconColor} />
           </div>
           <p style={{ fontSize: '16px', lineHeight: '1.6', margin: 0 }}>{message}</p>
         </div>
@@ -70,8 +76,8 @@ export default function ConfirmDialog({ show, message, onConfirm, onCancel, conf
             className="btn"
             style={{
               flex: 1,
-              background: '#ff4444',
-              color: '#fff',
+              background: buttonColor,
+              color: isDeleteAction ? '#fff' : '#000',
               border: 'none'
             }}
           >

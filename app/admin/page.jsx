@@ -1,22 +1,25 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthContext';
 import { useLanguage } from '@/components/LanguageContext';
+import { useProgress } from '@/components/ProgressContext';
 import Header from '@/components/Header';
 import {
-  Shield, Database, Key, Save, RefreshCw, AlertCircle, Check, ChevronDown, ChevronUp,
-  Download, Upload, Trash2, Car, Archive, Edit2, Plus, MoveRight
+  Shield, Key, RefreshCw, AlertCircle, Check, ChevronDown, ChevronUp,
+  Trash2, Car, Edit2, Plus, MoveRight
 } from 'lucide-react';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import EditDialog from '@/components/EditDialog';
+import BackupSection from '@/components/BackupSection';
 
 export default function AdminPage() {
   const router = useRouter();
   const { isAdmin, isLoading, fetchAPI, logout } = useAuth();
   const { t } = useLanguage();
+  const { withProgress, startOperation, endOperation } = useProgress();
 
   // Data editor state
   const [jsonData, setJsonData] = useState('');
@@ -49,13 +52,20 @@ export default function AdminPage() {
   // Dialog state
   const [editDialog, setEditDialog] = useState({ show: false, title: '', value: '', onConfirm: null });
   const [deleteDialog, setDeleteDialog] = useState({ show: false, message: '', onConfirm: null });
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null, confirmText: 'Confirm' });
   const [moveDialog, setMoveDialog] = useState({ show: false, itemType: '', itemId: null, itemName: '', targets: [] });
+
+  // Global operation loading state to prevent multiple simultaneous operations
+  const [operationInProgress, setOperationInProgress] = useState(false);
 
   // Backup state
   const [showBackups, setShowBackups] = useState(false);
   const [backups, setBackups] = useState([]);
+  const [fullBackups, setFullBackups] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [backupLoading, setBackupLoading] = useState(false);
   const [backupMessage, setBackupMessage] = useState({ type: '', text: '' });
+  const [showAuditLogs, setShowAuditLogs] = useState(false);
 
   // Credentials state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -285,9 +295,24 @@ export default function AdminPage() {
     loadEngines(type.id);
   };
 
-  // Handle engine selection
-  const handleEngineSelect = (engine) => {
+  // Handle engine selection - navigate to results page
+  const handleEngineSelect = async (engine) => {
     setSelectedEngine(engine);
+
+    // Navigate to the engine's results page
+    try {
+      // Get the type, model, and brand information
+      const type = types.find(t => t.id === engine.typeId);
+      const model = models.find(m => m.id === type?.modelId);
+      const brand = brands.find(b => b.id === model?.brandId);
+
+      if (brand && model && type) {
+        const url = `/${brand.name.toLowerCase()}/${encodeURIComponent(model.name)}/${encodeURIComponent(type.name)}/${engine.id}`;
+        router.push(url);
+      }
+    } catch (error) {
+      console.error('Failed to navigate to engine page:', error);
+    }
   };
 
   // Load backup history
@@ -306,6 +331,16 @@ export default function AdminPage() {
 
   // Create manual backup
   const createBackup = async () => {
+    setConfirmDialog({
+      show: true,
+      message: 'Create a backup of the current database? This will save all brands, models, engines, and stages.',
+      confirmText: 'Create Backup',
+      onConfirm: () => performCreateBackup()
+    });
+  };
+
+  const performCreateBackup = async () => {
+    setConfirmDialog({ show: false, message: '', onConfirm: null, confirmText: 'Confirm' });
     setBackupLoading(true);
     setBackupMessage({ type: '', text: '' });
     try {
@@ -314,9 +349,12 @@ export default function AdminPage() {
         isProtected: true,
       });
       setBackupMessage({ type: 'success', text: 'Backup created successfully!' });
+      showToast('Backup created successfully!', 'success');
       await loadBackups(); // Reload backup list
     } catch (error) {
+      console.error('Backup creation error:', error);
       setBackupMessage({ type: 'error', text: 'Failed to create backup: ' + error.message });
+      showToast('Failed to create backup: ' + error.message, 'error');
     }
     setBackupLoading(false);
   };
@@ -376,6 +414,105 @@ export default function AdminPage() {
       setBackupMessage({ type: 'error', text: 'Failed to delete: ' + error.message });
     }
     setBackupLoading(false);
+  };
+
+  // Load full backups (new system)
+  const loadFullBackups = async () => {
+    setBackupLoading(true);
+    setBackupMessage({ type: '', text: '' });
+    try {
+      const response = await fetchAPI('admin/backup/full', { isProtected: true });
+      setFullBackups(response.backups || []);
+      setBackupMessage({ type: 'success', text: `Loaded ${response.backups.length} full backups` });
+    } catch (error) {
+      setBackupMessage({ type: 'error', text: 'Failed to load full backups: ' + error.message });
+    }
+    setBackupLoading(false);
+  };
+
+  // Load audit logs
+  const loadAuditLogs = async (limit = 100) => {
+    setBackupLoading(true);
+    try {
+      const response = await fetchAPI(`admin/backup/audit?limit=${limit}`, { isProtected: true });
+      setAuditLogs(response.logs || []);
+    } catch (error) {
+      setBackupMessage({ type: 'error', text: 'Failed to load audit logs: ' + error.message });
+    }
+    setBackupLoading(false);
+  };
+
+  // Create full backup with progress tracking
+  const createFullBackup = async () => {
+    setConfirmDialog({
+      show: true,
+      message: 'Create a full database backup? This will create a complete snapshot using MongoDB utilities.',
+      confirmText: 'Create Full Backup',
+      onConfirm: () => performCreateFullBackup()
+    });
+  };
+
+  const performCreateFullBackup = async () => {
+    setConfirmDialog({ show: false, message: '', onConfirm: null, confirmText: 'Confirm' });
+    try {
+      await withProgress(async () => {
+        const response = await fetchAPI('admin/backup/full', {
+          method: 'POST',
+          isProtected: true,
+          body: JSON.stringify({ description: 'Manual full backup from admin panel' })
+        });
+
+        setBackupMessage({ type: 'success', text: 'Full backup created successfully!' });
+        showToast('Full backup created successfully!', 'success');
+
+        // Reload backups
+        await loadFullBackups();
+      }, 'Creating Full Backup', 'Please wait while we create a complete database snapshot...');
+    } catch (error) {
+      setBackupMessage({ type: 'error', text: 'Failed to create backup: ' + error.message });
+      showToast('Failed to create backup: ' + error.message, 'error');
+    }
+  };
+
+  // Restore from full backup with progress tracking
+  const restoreFullBackup = async (backupId) => {
+    setConfirmDialog({
+      show: true,
+      message: '⚠️ WARNING: This will restore the entire database from backup. All current data will be replaced. Are you absolutely sure?',
+      confirmText: 'Yes, Restore Database',
+      onConfirm: () => performRestoreFullBackup(backupId)
+    });
+  };
+
+  const performRestoreFullBackup = async (backupId) => {
+    setConfirmDialog({ show: false, message: '', onConfirm: null, confirmText: 'Confirm' });
+    try {
+      await withProgress(async () => {
+        await fetchAPI('admin/backup/restore', {
+          method: 'POST',
+          isProtected: true,
+          body: JSON.stringify({ backupId }),
+        });
+
+        setBackupMessage({ type: 'success', text: 'Database restored successfully!' });
+        showToast('Database restored successfully!', 'success');
+
+        // Reload all data if visual editor is open
+        if (showVisualEditor) {
+          await loadBrands();
+          setSelectedBrand(null);
+          setSelectedModel(null);
+          setSelectedType(null);
+          setSelectedEngine(null);
+          setModels([]);
+          setTypes([]);
+          setEngines([]);
+        }
+      }, 'Restoring Database', 'Please wait while we restore the database from backup. This may take a few minutes...');
+    } catch (error) {
+      setBackupMessage({ type: 'error', text: 'Failed to restore: ' + error.message });
+      showToast('Failed to restore: ' + error.message, 'error');
+    }
   };
 
   // Download current data as JSON
@@ -915,6 +1052,12 @@ export default function AdminPage() {
 
   // Move item to different parent (same level only)
   const moveItem = async (itemType, itemId, targetParentType, targetParentId) => {
+    if (operationInProgress) {
+      showToast('Another operation is in progress. Please wait.', 'warning');
+      return;
+    }
+
+    setOperationInProgress(true);
     try {
       await fetchAPI('admin/move', {
         method: 'POST',
@@ -929,7 +1072,7 @@ export default function AdminPage() {
 
       setDataMessage({ type: 'success', text: `${itemType} moved successfully` });
       showToast(`${itemType} moved successfully`, 'success');
-      setMoveDialog({ show: false, itemType: '', itemId: null, itemName: '', targets: [] });
+      setMoveDialog({ show: false });
 
       // Reload the appropriate data
       if (itemType === 'model' && selectedBrand) {
@@ -946,141 +1089,63 @@ export default function AdminPage() {
     } catch (error) {
       setDataMessage({ type: 'error', text: 'Failed to move: ' + error.message });
       showToast('Failed to move: ' + error.message, 'error');
+    } finally {
+      setOperationInProgress(false);
     }
   };
 
-  // Open move dialog for model (move to any group across all brands)
+  // Open move dialog for model (step-by-step: brand → group)
   const openMoveModelDialog = async (model) => {
-    try {
-      // Fetch ALL groups from all brands
-      const allGroups = await fetchAPI('groups');
-
-      // Filter out the current group
-      const targetGroups = allGroups.filter(g => g.id !== model.groupId);
-
-      if (targetGroups.length === 0) {
-        showToast('No other groups available to move to', 'error');
-        return;
-      }
-
-      // Organize groups by brand for better UX
-      const groupedTargets = targetGroups.map(g => {
-        const brandName = brands.find(b => b.id === g.brandId)?.name || 'Unknown';
-        return {
-          id: g.id,
-          name: `${brandName} → ${g.name}`,
-          type: 'group',
-          brandId: g.brandId
-        };
-      });
-
-      setMoveDialog({
-        show: true,
-        itemType: 'model',
-        itemId: model.id,
-        itemName: model.name,
-        targets: groupedTargets
-      });
-    } catch (error) {
-      showToast('Failed to load groups: ' + error.message, 'error');
-    }
+    setMoveDialog({
+      show: true,
+      itemType: 'model',
+      itemId: model.id,
+      itemName: model.name,
+      currentGroupId: model.groupId,
+      currentBrandId: model.brandId,
+      // Step-by-step selection
+      selectedBrand: null,
+      selectedGroup: null,
+      availableGroups: []
+    });
   };
 
-  // Open move dialog for type (move to any model across all brands/groups)
+  // Open move dialog for type (step-by-step: brand → group → model)
   const openMoveTypeDialog = async (type) => {
-    try {
-      // Fetch ALL models from all brands
-      const allModels = await fetchAPI('models');
-
-      // Filter out the current model
-      const targetModels = allModels.filter(m => m.id !== type.modelId);
-
-      if (targetModels.length === 0) {
-        showToast('No other models available to move to', 'error');
-        return;
-      }
-
-      // Organize models by brand and group for better UX
-      const groupedTargets = await Promise.all(targetModels.map(async (m) => {
-        const brandName = brands.find(b => b.id === m.brandId)?.name || 'Unknown';
-        let groupName = '';
-
-        if (m.groupId) {
-          try {
-            const allGroups = await fetchAPI('groups');
-            const group = allGroups.find(g => g.id === m.groupId);
-            groupName = group ? ` (${group.name})` : '';
-          } catch (e) {
-            // Ignore group fetch errors
-          }
-        }
-
-        return {
-          id: m.id,
-          name: `${brandName}${groupName} → ${m.name}`,
-          type: 'model',
-          brandId: m.brandId
-        };
-      }));
-
-      setMoveDialog({
-        show: true,
-        itemType: 'type',
-        itemId: type.id,
-        itemName: type.name,
-        targets: groupedTargets
-      });
-    } catch (error) {
-      showToast('Failed to load models: ' + error.message, 'error');
-    }
+    setMoveDialog({
+      show: true,
+      itemType: 'type',
+      itemId: type.id,
+      itemName: type.name,
+      currentModelId: type.modelId,
+      currentBrandId: type.brandId,
+      // Step-by-step selection
+      selectedBrand: null,
+      selectedGroup: null,
+      selectedModel: null,
+      availableGroups: [],
+      availableModels: []
+    });
   };
 
-  // Open move dialog for engine (move to any type across all brands/models)
+  // Open move dialog for engine (step-by-step: brand → group → model → generation)
   const openMoveEngineDialog = async (engine) => {
-    try {
-      // Fetch ALL types from all models
-      const allTypes = await fetchAPI('types');
-
-      // Filter out the current type
-      const targetTypes = allTypes.filter(t => t.id !== engine.typeId);
-
-      if (targetTypes.length === 0) {
-        showToast('No other generations available to move to', 'error');
-        return;
-      }
-
-      // Organize types by brand and model for better UX
-      const groupedTargets = await Promise.all(targetTypes.map(async (t) => {
-        const brandName = brands.find(b => b.id === t.brandId)?.name || 'Unknown';
-        let modelName = '';
-
-        try {
-          const allModels = await fetchAPI('models');
-          const model = allModels.find(m => m.id === t.modelId);
-          modelName = model ? model.name : 'Unknown Model';
-        } catch (e) {
-          modelName = 'Unknown Model';
-        }
-
-        return {
-          id: t.id,
-          name: `${brandName} → ${modelName} → ${t.name}`,
-          type: 'type',
-          brandId: t.brandId,
-          modelId: t.modelId
-        };
-      }));
-
-      setMoveDialog({
-        show: true,
-        itemType: 'engine',
-        itemId: engine.id,
-        itemName: engine.name,
-        targets: groupedTargets
-      });
-    } catch (error) {
-      showToast('Failed to load generations: ' + error.message, 'error');
-    }
+    setMoveDialog({
+      show: true,
+      itemType: 'engine',
+      itemId: engine.id,
+      itemName: engine.name,
+      currentTypeId: engine.typeId,
+      currentBrandId: engine.brandId,
+      // Step-by-step selection
+      selectedBrand: null,
+      selectedGroup: null,
+      selectedModel: null,
+      selectedType: null,
+      availableGroups: [],
+      availableModels: [],
+      availableTypes: []
+    });
   };
 
   if (isLoading) {
@@ -1119,19 +1184,20 @@ export default function AdminPage() {
           <p style={{ color: 'var(--text-muted)' }}>{t('manageDatabaseAndCredentials')}</p>
         </div>
 
-        {/* Backup Section */}
+        {/* Backup Section - New Production System */}
         <BackupSection
-          t={t}
           showBackups={showBackups}
           setShowBackups={setShowBackups}
-          backups={backups}
+          fullBackups={fullBackups}
+          auditLogs={auditLogs}
           backupLoading={backupLoading}
           backupMessage={backupMessage}
-          loadBackups={loadBackups}
-          createBackup={createBackup}
-          restoreBackup={restoreBackup}
-          deleteBackup={deleteBackup}
-          downloadCurrentData={downloadCurrentData}
+          loadFullBackups={loadFullBackups}
+          createFullBackup={createFullBackup}
+          restoreFullBackup={restoreFullBackup}
+          loadAuditLogs={loadAuditLogs}
+          showAuditLogs={showAuditLogs}
+          setShowAuditLogs={setShowAuditLogs}
         />
 
         {/* Visual Editor Section */}
@@ -1230,6 +1296,18 @@ export default function AdminPage() {
         onCancel={() => setDeleteDialog({ show: false, message: '', onConfirm: null })}
       />
 
+      {/* General Confirm Dialog (for non-delete actions) */}
+      <ConfirmDialog
+        show={confirmDialog.show}
+        message={confirmDialog.message}
+        confirmText={confirmDialog.confirmText}
+        onConfirm={() => {
+          if (confirmDialog.onConfirm) confirmDialog.onConfirm();
+          setConfirmDialog({ show: false, message: '', onConfirm: null, confirmText: 'Confirm' });
+        }}
+        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null, confirmText: 'Confirm' })}
+      />
+
       {/* Edit Dialog */}
       <EditDialog
         show={editDialog.show}
@@ -1247,299 +1325,433 @@ export default function AdminPage() {
         moveDialog={moveDialog}
         setMoveDialog={setMoveDialog}
         moveItem={moveItem}
+        operationInProgress={operationInProgress}
       />}
+
+      {/* Global Operation Loading Overlay */}
+      {operationInProgress && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          flexDirection: 'column',
+          gap: '20px'
+        }}>
+          <RefreshCw size={56} style={{ animation: 'spin 1s linear infinite', color: 'var(--primary)' }} />
+          <p style={{ fontSize: '1.2rem', color: 'var(--text)', fontWeight: '600' }}>Processing operation...</p>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Please wait, do not close this window</p>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </>
   );
 }
 
-// Move Dialog Component with Search
-function MoveDialog({ moveDialog, setMoveDialog, moveItem }) {
-  const [searchTerm, setSearchTerm] = useState('');
+// Step-by-step Move Dialog Component (like home selector)
+function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }) {
+  const [loading, setLoading] = useState(false);
+  const [brands, setBrands] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [models, setModels] = useState([]);
+  const [types, setTypes] = useState([]);
 
-  const filteredTargets = useMemo(() => {
-    if (!searchTerm) return moveDialog.targets;
-    return moveDialog.targets.filter(target =>
-      target.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [moveDialog.targets, searchTerm]);
+  // Fetch brands on mount
+  useEffect(() => {
+    const loadBrands = async () => {
+      try {
+        const response = await fetch('/api/brands');
+        const data = await response.json();
+        setBrands(data);
+      } catch (error) {
+        console.error('Failed to load brands:', error);
+      }
+    };
+    if (moveDialog.show) {
+      loadBrands();
+    }
+  }, [moveDialog.show]);
+
+  // Handle brand selection
+  const handleBrandSelect = async (brandId) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/groups?brandId=${brandId}`);
+      const data = await response.json();
+      setGroups(data);
+      setMoveDialog({ ...moveDialog, selectedBrand: brandId, selectedGroup: null, selectedModel: null, selectedType: null });
+    } catch (error) {
+      console.error('Failed to load groups:', error);
+    }
+    setLoading(false);
+  };
+
+  // Handle group selection
+  const handleGroupSelect = async (groupId) => {
+    if (moveDialog.itemType === 'model') {
+      // For model move, store the selection and show confirmation
+      setMoveDialog({ ...moveDialog, selectedGroup: groupId, showConfirmation: true });
+      return;
+    }
+
+    // For type/engine, continue to model selection
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/models?brandId=${moveDialog.selectedBrand}&groupId=${groupId}`);
+      const data = await response.json();
+      setModels(data);
+      setMoveDialog({ ...moveDialog, selectedGroup: groupId, selectedModel: null, selectedType: null });
+    } catch (error) {
+      console.error('Failed to load models:', error);
+    }
+    setLoading(false);
+  };
+
+  // Handle model selection
+  const handleModelSelect = async (modelId) => {
+    if (moveDialog.itemType === 'type') {
+      // For type move, store the selection and show confirmation
+      setMoveDialog({ ...moveDialog, selectedModel: modelId, showConfirmation: true });
+      return;
+    }
+
+    // For engine, continue to type selection
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/types?modelId=${modelId}`);
+      const data = await response.json();
+      setTypes(data);
+      setMoveDialog({ ...moveDialog, selectedModel: modelId, selectedType: null });
+    } catch (error) {
+      console.error('Failed to load types:', error);
+    }
+    setLoading(false);
+  };
+
+  // Handle type selection (for engine)
+  const handleTypeSelect = async (typeId) => {
+    // For engine move, store the selection and show confirmation
+    setMoveDialog({ ...moveDialog, selectedType: typeId, showConfirmation: true });
+  };
+
+  // Confirm and execute the move
+  const confirmMove = async () => {
+    setLoading(true);
+
+    if (moveDialog.itemType === 'model') {
+      await moveItem('model', moveDialog.itemId, 'group', moveDialog.selectedGroup);
+    } else if (moveDialog.itemType === 'type') {
+      await moveItem('type', moveDialog.itemId, 'model', moveDialog.selectedModel);
+    } else if (moveDialog.itemType === 'engine') {
+      await moveItem('engine', moveDialog.itemId, 'type', moveDialog.selectedType);
+    }
+
+    setLoading(false);
+  };
+
+  const isDisabled = loading || operationInProgress;
+
+  // Get destination name for confirmation
+  const getDestinationName = () => {
+    if (moveDialog.itemType === 'model') {
+      const brand = brands.find(b => b.id === moveDialog.selectedBrand);
+      const group = groups.find(g => g.id === moveDialog.selectedGroup);
+      return `${brand?.name} → ${group?.name}`;
+    } else if (moveDialog.itemType === 'type') {
+      const brand = brands.find(b => b.id === moveDialog.selectedBrand);
+      const group = groups.find(g => g.id === moveDialog.selectedGroup);
+      const model = models.find(m => m.id === moveDialog.selectedModel);
+      return `${brand?.name} → ${group?.name} → ${model?.name}`;
+    } else if (moveDialog.itemType === 'engine') {
+      const brand = brands.find(b => b.id === moveDialog.selectedBrand);
+      const group = groups.find(g => g.id === moveDialog.selectedGroup);
+      const model = models.find(m => m.id === moveDialog.selectedModel);
+      const type = types.find(t => t.id === moveDialog.selectedType);
+      return `${brand?.name} → ${group?.name} → ${model?.name} → ${type?.name}`;
+    }
+    return '';
+  };
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0,0,0,0.7)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000
-    }}>
+    <>
       <div style={{
-        background: 'var(--card-bg)',
-        borderRadius: '12px',
-        padding: '24px',
-        maxWidth: '500px',
-        width: '90%',
-        border: '1px solid var(--border)',
-        maxHeight: '80vh',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0,0,0,0.7)',
         display: 'flex',
-        flexDirection: 'column'
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        pointerEvents: isDisabled ? 'none' : 'auto'
       }}>
-        <h3 style={{ margin: '0 0 8px 0' }}>
-          Move "{moveDialog.itemName}"
-        </h3>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '16px', fontSize: '0.9rem' }}>
-          Select destination ({moveDialog.targets.length} available):
-        </p>
-
-        {/* Search Input */}
-        <input
-          type="text"
-          placeholder="Search destinations..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '10px 12px',
-            marginBottom: '16px',
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            color: 'var(--text)',
-            fontSize: '0.9rem'
-          }}
-        />
-
-        {/* Targets List */}
         <div style={{
-          maxHeight: '400px',
-          overflowY: 'auto',
-          marginBottom: '16px',
-          flex: 1
+          background: 'black',
+          borderRadius: '12px',
+          padding: '28px',
+          maxWidth: '600px',
+          width: '90%',
+          border: '1px solid var(--border)',
+          maxHeight: '85vh',
+          overflowY: 'auto'
         }}>
-          {filteredTargets.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>
-              No destinations found
-            </p>
+          {/* Confirmation View */}
+          {moveDialog.showConfirmation ? (
+            <>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '1.3rem', color: '#ff9800' }}>
+                Confirm Move
+              </h3>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>
+                Are you sure you want to move this item?
+              </p>
+
+              <div style={{
+                background: 'rgba(255, 152, 0, 0.1)',
+                border: '1px solid rgba(255, 152, 0, 0.3)',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '24px'
+              }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <strong style={{ color: '#00ff88' }}>Item:</strong>
+                  <div style={{ marginTop: '4px', fontSize: '1.05rem' }}>{moveDialog.itemName}</div>
+                </div>
+                <div>
+                  <strong style={{ color: '#00ff88' }}>Move to:</strong>
+                  <div style={{ marginTop: '4px', fontSize: '1.05rem' }}>{getDestinationName()}</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => setMoveDialog({ ...moveDialog, showConfirmation: false })}
+                  disabled={isDisabled}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: 'transparent',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    color: 'var(--text)',
+                    cursor: isDisabled ? 'not-allowed' : 'pointer',
+                    fontSize: '0.95rem',
+                    opacity: isDisabled ? 0.5 : 1
+                  }}
+                >
+                  Back
+                </button>
+                <button
+                  onClick={confirmMove}
+                  disabled={isDisabled}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: '#ff9800',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: 'black',
+                    cursor: isDisabled ? 'not-allowed' : 'pointer',
+                    fontSize: '0.95rem',
+                    fontWeight: '600',
+                    opacity: isDisabled ? 0.5 : 1
+                  }}
+                >
+                  {loading ? 'Moving...' : 'Confirm Move'}
+                </button>
+              </div>
+            </>
           ) : (
-            filteredTargets.map(target => (
+            <>
+              {/* Selection View */}
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '1.3rem' }}>
+                Move "{moveDialog.itemName}"
+              </h3>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>
+                {moveDialog.itemType === 'model' && 'Select brand and group'}
+                {moveDialog.itemType === 'type' && 'Select brand, group, and model'}
+                {moveDialog.itemType === 'engine' && 'Select brand, group, model, and generation'}
+              </p>
+
+              {/* Brand Selection */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>Brand</label>
+                <select
+                  value={moveDialog.selectedBrand || ''}
+                  onChange={(e) => handleBrandSelect(parseInt(e.target.value))}
+                  disabled={isDisabled}
+                  className="move-select"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    background: '#1a1a1a',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    color: '#ffffff',
+                    fontSize: '0.95rem',
+                    cursor: isDisabled ? 'not-allowed' : 'pointer',
+                    opacity: isDisabled ? 0.6 : 1
+                  }}
+                >
+                  <option value="" style={{ background: '#1a1a1a', color: '#888' }}>-- Select Brand --</option>
+                  {brands.map(brand => (
+                    <option key={brand.id} value={brand.id} style={{ background: '#1a1a1a', color: '#ffffff' }}>
+                      {brand.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Group Selection */}
+              {moveDialog.selectedBrand && (
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>Group</label>
+                  <select
+                    value={moveDialog.selectedGroup || ''}
+                    onChange={(e) => handleGroupSelect(parseInt(e.target.value))}
+                    disabled={isDisabled || !moveDialog.selectedBrand}
+                    className="move-select"
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      background: '#1a1a1a',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      fontSize: '0.95rem',
+                      cursor: isDisabled ? 'not-allowed' : 'pointer',
+                      opacity: isDisabled ? 0.6 : 1
+                    }}
+                  >
+                    <option value="" style={{ background: '#1a1a1a', color: '#888' }}>-- Select Group --</option>
+                    {groups.filter(g => g.id !== moveDialog.currentGroupId).map(group => (
+                      <option key={group.id} value={group.id} style={{ background: '#1a1a1a', color: '#ffffff' }}>
+                        {group.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Model Selection (for type and engine) */}
+              {(moveDialog.itemType === 'type' || moveDialog.itemType === 'engine') && moveDialog.selectedGroup && (
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>Model</label>
+                  <select
+                    value={moveDialog.selectedModel || ''}
+                    onChange={(e) => handleModelSelect(parseInt(e.target.value))}
+                    disabled={isDisabled || !moveDialog.selectedGroup}
+                    className="move-select"
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      background: '#1a1a1a',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      fontSize: '0.95rem',
+                      cursor: isDisabled ? 'not-allowed' : 'pointer',
+                      opacity: isDisabled ? 0.6 : 1
+                    }}
+                  >
+                    <option value="" style={{ background: '#1a1a1a', color: '#888' }}>-- Select Model --</option>
+                    {models.filter(m => m.id !== moveDialog.currentModelId).map(model => (
+                      <option key={model.id} value={model.id} style={{ background: '#1a1a1a', color: '#ffffff' }}>
+                        {model.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Type/Generation Selection (for engine only) */}
+              {moveDialog.itemType === 'engine' && moveDialog.selectedModel && (
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>Generation</label>
+                  <select
+                    value={moveDialog.selectedType || ''}
+                    onChange={(e) => handleTypeSelect(parseInt(e.target.value))}
+                    disabled={isDisabled || !moveDialog.selectedModel}
+                    className="move-select"
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      background: '#1a1a1a',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      fontSize: '0.95rem',
+                      cursor: isDisabled ? 'not-allowed' : 'pointer',
+                      opacity: isDisabled ? 0.6 : 1
+                    }}
+                  >
+                    <option value="" style={{ background: '#1a1a1a', color: '#888' }}>-- Select Generation --</option>
+                    {types.filter(t => t.id !== moveDialog.currentTypeId).map(type => (
+                      <option key={type.id} value={type.id} style={{ background: '#1a1a1a', color: '#ffffff' }}>
+                        {type.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Cancel Button */}
               <button
-                key={target.id}
-                onClick={() => moveItem(moveDialog.itemType, moveDialog.itemId, target.type, target.id)}
+                onClick={() => setMoveDialog({ show: false })}
+                disabled={isDisabled}
                 style={{
-                  display: 'block',
                   width: '100%',
                   padding: '12px',
-                  marginBottom: '8px',
-                  background: 'rgba(255,255,255,0.05)',
+                  marginTop: '8px',
+                  background: 'transparent',
                   border: '1px solid var(--border)',
                   borderRadius: '8px',
                   color: 'var(--text)',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'background 0.2s',
-                  fontSize: '0.9rem'
+                  cursor: isDisabled ? 'not-allowed' : 'pointer',
+                  fontSize: '0.95rem',
+                  opacity: isDisabled ? 0.5 : 1
                 }}
-                onMouseOver={(e) => e.target.style.background = 'rgba(184, 192, 200, 0.2)'}
-                onMouseOut={(e) => e.target.style.background = 'rgba(255,255,255,0.05)'}
               >
-                {target.name}
+                Cancel
               </button>
-            ))
+            </>
           )}
         </div>
-
-        {/* Cancel Button */}
-        <button
-          onClick={() => setMoveDialog({ show: false, itemType: '', itemId: null, itemName: '', targets: [] })}
-          style={{
-            width: '100%',
-            padding: '12px',
-            background: 'transparent',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            color: 'var(--text)',
-            cursor: 'pointer',
-            fontSize: '0.9rem'
-          }}
-        >
-          Cancel
-        </button>
       </div>
-    </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .move-select option {
+          background: #1a1a1a !important;
+          color: #ffffff !important;
+        }
+
+        .move-select option:hover {
+          background: #2a2a2a !important;
+        }
+      `}</style>
+    </>
   );
 }
 
-// Backup Section Component
-function BackupSection({
-  t, showBackups, setShowBackups, backups, backupLoading, backupMessage,
-  loadBackups, createBackup, restoreBackup, deleteBackup, downloadCurrentData
-}) {
-  return (
-    <div className="card" style={{ marginBottom: '24px' }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          cursor: 'pointer',
-          padding: '8px 0'
-        }}
-        onClick={() => setShowBackups(!showBackups)}
-      >
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: 0 }}>
-          <Archive size={24} color="#a8b0b8" />
-          Backup & Restore (MongoDB)
-        </h3>
-        {showBackups ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
-      </div>
 
-      {showBackups && (
-        <div style={{ marginTop: '24px' }}>
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            <button
-              onClick={loadBackups}
-              disabled={backupLoading}
-              className="btn"
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <RefreshCw size={16} className={backupLoading ? 'spin' : ''} />
-              {backupLoading ? 'Loading...' : 'Load Backups'}
-            </button>
-            <button
-              onClick={createBackup}
-              disabled={backupLoading}
-              className="btn btn-search"
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <Save size={16} />
-              Create Backup
-            </button>
-            <button
-              onClick={downloadCurrentData}
-              disabled={backupLoading}
-              className="btn"
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <Download size={16} />
-              Export to JSON
-            </button>
-          </div>
-
-          {/* Message */}
-          {backupMessage.text && (
-            <div style={{
-              padding: '12px',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              background: backupMessage.type === 'error'
-                ? 'rgba(255, 68, 68, 0.1)'
-                : 'rgba(0, 255, 136, 0.1)',
-              border: `1px solid ${backupMessage.type === 'error' ? 'rgba(255, 68, 68, 0.3)' : 'rgba(0, 255, 136, 0.3)'}`,
-              color: backupMessage.type === 'error' ? '#ff4444' : '#00ff88',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              {backupMessage.type === 'error' ? <AlertCircle size={16} /> : <Check size={16} />}
-              {backupMessage.text}
-            </div>
-          )}
-
-          {/* Backup History */}
-          {backups.length > 0 && (
-            <div>
-              <h4 style={{ marginBottom: '16px', fontSize: '0.95rem', color: 'var(--primary)' }}>
-                Backup History ({backups.length})
-              </h4>
-              <div style={{
-                maxHeight: '400px',
-                overflowY: 'auto',
-                background: 'rgba(50, 55, 60, 0.3)',
-                borderRadius: '8px',
-                padding: '12px'
-              }}>
-                {backups.map((backup, index) => (
-                  <div
-                    key={backup.id}
-                    style={{
-                      padding: '12px',
-                      marginBottom: '8px',
-                      background: 'rgba(255,255,255,0.05)',
-                      borderRadius: '6px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      border: '1px solid rgba(255,255,255,0.1)'
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '0.9rem', fontWeight: '500', marginBottom: '4px' }}>
-                        Backup #{backups.length - index}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {new Date(backup.timestamp).toLocaleString()}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        onClick={() => restoreBackup(backup.id)}
-                        disabled={backupLoading}
-                        className="btn"
-                        style={{
-                          padding: '6px 12px',
-                          fontSize: '0.8rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                      >
-                        <Upload size={14} />
-                        Restore
-                      </button>
-                      <button
-                        onClick={() => deleteBackup(backup.id)}
-                        disabled={backupLoading}
-                        style={{
-                          background: 'none',
-                          border: '1px solid #ff4444',
-                          color: '#ff4444',
-                          cursor: 'pointer',
-                          padding: '6px 12px',
-                          borderRadius: '6px',
-                          fontSize: '0.8rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                      >
-                        <Trash2 size={14} />
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {backups.length === 0 && !backupLoading && (
-            <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>
-              No backups found. Click "Load Backups" to refresh or "Create Backup" to create one.
-            </p>
-          )}
-
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-            💡 <strong>Tip:</strong> Backups are automatically created before any data changes. You can also create manual backups and restore from any point in history.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // Visual Editor Section Component
 function VisualEditorSection({

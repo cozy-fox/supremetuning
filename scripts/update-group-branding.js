@@ -23,20 +23,14 @@ const dbName = process.env.MONGODB_DB || 'supremetuning';
 const brandingData = {
   'RS': {
     description: 'RennSport - Audi Performance Division',
-    color: '#ff0000',
-    icon: '🏁',
     tagline: 'Born on the track'
   },
   'M': {
     description: 'BMW Motorsport - Ultimate Driving Machines',
-    color: '#0066cc',
-    icon: '🏎️',
     tagline: 'The Most Powerful Letter in the World'
   },
   'AMG': {
     description: 'Aufrecht Melcher Großaspach - Mercedes Performance',
-    color: '#00d4aa',
-    icon: '⚡',
     tagline: 'Driving Performance'
   }
 };

@@ -79,7 +79,7 @@ export default function EditDialog({ show, title, value, onConfirm, onCancel, pl
               padding: '12px 16px',
               borderRadius: '8px',
               border: '1px solid var(--border)',
-              background: 'rgba(255, 255, 255, 0.05)',
+              // background: 'rgba(255, 255, 255, 0.05)',
               color: 'var(--text)',
               fontSize: '16px',
               marginBottom: '20px'
