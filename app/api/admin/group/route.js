@@ -16,7 +16,18 @@ export async function POST(request) {
   }
 
   try {
-    const { brandId, name, isPerformance, logo, order } = await request.json();
+    const {
+      brandId,
+      name,
+      displayName,
+      description,
+      isPerformance,
+      color,
+      icon,
+      tagline,
+      logo,
+      order
+    } = await request.json();
 
     if (!brandId || !name) {
       return NextResponse.json(
@@ -29,15 +40,20 @@ export async function POST(request) {
     const groupData = {
       brandId: parseInt(brandId),
       name: name.trim(),
+      displayName: displayName?.trim() || null,
+      description: description?.trim() || null,
       slug,
       isPerformance: isPerformance || false,
+      color: color || null,
+      icon: icon || null,
+      tagline: tagline?.trim() || null,
       logo: logo || null,
       order: order || 0
     };
 
     const result = await insertOne('groups', groupData);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Group created successfully',
       group: result
     });
@@ -63,7 +79,18 @@ export async function PUT(request) {
   }
 
   try {
-    const { id, name, isPerformance, logo, order } = await request.json();
+    const {
+      id,
+      name,
+      displayName,
+      description,
+      isPerformance,
+      color,
+      icon,
+      tagline,
+      logo,
+      order
+    } = await request.json();
 
     if (!id || !name) {
       return NextResponse.json(
@@ -78,13 +105,19 @@ export async function PUT(request) {
       slug
     };
 
+    // Update optional fields
+    if (displayName !== undefined) updateData.displayName = displayName?.trim() || null;
+    if (description !== undefined) updateData.description = description?.trim() || null;
     if (isPerformance !== undefined) updateData.isPerformance = isPerformance;
-    if (logo !== undefined) updateData.logo = logo;
+    if (color !== undefined) updateData.color = color || null;
+    if (icon !== undefined) updateData.icon = icon || null;
+    if (tagline !== undefined) updateData.tagline = tagline?.trim() || null;
+    if (logo !== undefined) updateData.logo = logo || null;
     if (order !== undefined) updateData.order = order;
 
     await updateById('groups', id, updateData);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Group updated successfully',
       group: { id, ...updateData }
     });

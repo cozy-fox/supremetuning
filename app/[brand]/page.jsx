@@ -2,8 +2,8 @@ import { getBrands, getModels, getBrandByName, getGroups, brandHasGroups } from 
 import { generateMetadata as generateSeoMetadata } from '@/lib/seo';
 import { notFound } from 'next/navigation';
 import Header from '@/components/Header';
+import GroupSelector from './GroupSelector';
 import BrandSelector from './BrandSelector';
-import BrandHero from './BrandHero';
 
 // Generate static params for all brands (SSG)
 export async function generateStaticParams() {
@@ -83,24 +83,13 @@ export default async function BrandPage({ params }) {
   return (
     <>
       <Header />
-      <main className="container" style={{ padding: '40px 24px' }}>
-        {/* Breadcrumb */}
-        <nav className="breadcrumb">
-          <a href="/">Home</a>
-          <span>›</span>
-          <span className="current">{brand.name}</span>
-        </nav>
-
-        {/* Hero with translations */}
-        <BrandHero brandName={brand.name} hasGroups={brandGroups.hasGroups} />
-
-        {/* Client-side selector component */}
-        <BrandSelector
-          brand={brand}
-          models={models}
-          brandGroups={brandGroups}
-        />
-      </main>
+      {/* Full-page Group Selection - then shows model selector */}
+      <GroupSelector
+        brand={brand}
+        groups={brandGroups.groups}
+        models={models}
+        brandGroups={brandGroups}
+      />
     </>
   );
 }

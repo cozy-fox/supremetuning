@@ -241,7 +241,7 @@ export default function BackupSection({
                           }}>
                             {log.action}
                           </span>
-                          {log.collection} / ID: {log.documentId}
+                          {log.collection} / {log.documentName || `ID: ${log.documentId}`}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <Clock size={12} />
@@ -252,18 +252,23 @@ export default function BackupSection({
                         {log.changes && Object.keys(log.changes).length > 0 && (
                           <div style={{ fontSize: '0.75rem', marginTop: '8px', padding: '8px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px' }}>
                             <div style={{ fontWeight: '600', marginBottom: '4px', color: 'var(--primary)' }}>Changed fields:</div>
-                            {Object.entries(log.changes).map(([field, change]) => (
-                              <div key={field} style={{ marginBottom: '4px', paddingLeft: '8px' }}>
-                                <span style={{ color: 'var(--text-muted)' }}>{field}:</span>{' '}
-                                <span style={{ color: '#ff4444', textDecoration: 'line-through' }}>
-                                  {JSON.stringify(change.from)}
-                                </span>
-                                {' → '}
-                                <span style={{ color: '#00ff88' }}>
-                                  {JSON.stringify(change.to)}
-                                </span>
-                              </div>
-                            ))}
+                            {Object.entries(log.resolvedChanges || log.changes).map(([field, change]) => {
+                              // Display field name without 'Id' suffix if it's an ID field
+                              const displayField = field.endsWith('Id') ? field.replace('Id', '') : field;
+
+                              return (
+                                <div key={field} style={{ marginBottom: '4px', paddingLeft: '8px' }}>
+                                  <span style={{ color: 'var(--text-muted)' }}>{displayField}:</span>{' '}
+                                  <span style={{ color: '#ff4444', textDecoration: 'line-through' }}>
+                                    {change.fromName || JSON.stringify(change.from)}
+                                  </span>
+                                  {' → '}
+                                  <span style={{ color: '#00ff88' }}>
+                                    {change.toName || JSON.stringify(change.to)}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>

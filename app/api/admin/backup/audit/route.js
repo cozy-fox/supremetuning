@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { getRecentAuditLogs, getAuditHistory, rollbackToVersion } from '@/lib/backup-service';
+import { findById } from '@/lib/data';
 
 /**
  * GET /api/admin/backup/audit - Get audit logs
@@ -36,11 +37,63 @@ export async function GET(request) {
       const filters = {};
       if (collection) filters.collection = collection;
       if (action) filters.action = action;
-      
+
       logs = await getRecentAuditLogs(limit, filters);
     }
 
-    return NextResponse.json({ logs, count: logs.length });
+    // Enhance logs with resolved names
+    const enhancedLogs = await Promise.all(logs.map(async (log) => {
+      const enhanced = { ...log };
+
+      // Resolve document name based on collection
+      try {
+        if (log.collection && log.documentId) {
+          const doc = await findById(log.collection, log.documentId);
+          if (doc) {
+            enhanced.documentName = doc.name || doc.stageName || `ID: ${log.documentId}`;
+          }
+        }
+      } catch (error) {
+        // If document not found, keep original
+      }
+
+      // Resolve IDs in changes to names
+      if (log.changes) {
+        enhanced.resolvedChanges = {};
+        for (const [field, change] of Object.entries(log.changes)) {
+          enhanced.resolvedChanges[field] = { ...change };
+
+          // Resolve brandId, modelId, typeId, engineId to names
+          if (field.endsWith('Id') && typeof change.to === 'number') {
+            const collectionName = field.replace('Id', '') + 's'; // brandId -> brands
+            try {
+              const item = await findById(collectionName, change.to);
+              if (item) {
+                enhanced.resolvedChanges[field].toName = item.name || item.stageName;
+              }
+            } catch (error) {
+              // Keep original if not found
+            }
+          }
+
+          if (field.endsWith('Id') && typeof change.from === 'number') {
+            const collectionName = field.replace('Id', '') + 's';
+            try {
+              const item = await findById(collectionName, change.from);
+              if (item) {
+                enhanced.resolvedChanges[field].fromName = item.name || item.stageName;
+              }
+            } catch (error) {
+              // Keep original if not found
+            }
+          }
+        }
+      }
+
+      return enhanced;
+    }));
+
+    return NextResponse.json({ logs: enhancedLogs, count: enhancedLogs.length });
   } catch (error) {
     console.error('❌ Get audit logs error:', error);
     return NextResponse.json(

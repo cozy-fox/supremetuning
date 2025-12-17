@@ -5,6 +5,48 @@ import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/components/LanguageContext';
 import { Search, Car, Settings, Gauge, ChevronRight, Zap } from 'lucide-react';
 
+// Performance Brand Logos
+const BMWMLogo = ({ size = 40 }) => (
+  <svg width={size} height={size * 0.6} viewBox="0 0 100 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 50 L10 10 L25 35 L40 10 L40 50 L32 50 L32 25 L25 40 L18 25 L18 50 Z" fill="#0066cc" stroke="#0066cc" strokeWidth="1" />
+    <path d="M45 50 L45 10 L60 35 L75 10 L75 50 L67 50 L67 25 L60 40 L53 25 L53 50 Z" fill="#0066cc" stroke="#0066cc" strokeWidth="1" />
+    <rect x="0" y="0" width="100" height="4" fill="#0066cc" />
+    <rect x="0" y="4" width="100" height="4" fill="#cc0000" />
+    <rect x="0" y="56" width="100" height="4" fill="#0066cc" />
+  </svg>
+);
+
+const AudiRSLogo = ({ size = 40 }) => (
+  <svg width={size} height={size * 0.5} viewBox="0 0 100 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="rsGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" style={{ stopColor: '#ff0000', stopOpacity: 1 }} />
+        <stop offset="100%" style={{ stopColor: '#cc0000', stopOpacity: 1 }} />
+      </linearGradient>
+    </defs>
+    <path d="M5 40 L5 10 L20 10 Q28 10 28 18 Q28 24 22 25 L30 40 L22 40 L15 26 L13 26 L13 40 Z M13 18 L13 20 L20 20 Q20 18 18 18 Z" fill="url(#rsGradient)" stroke="#ff0000" strokeWidth="0.5" />
+    <path d="M35 40 Q32 40 32 37 L32 35 L40 35 L40 37 Q40 38 42 38 L48 38 Q50 38 50 36 Q50 34 48 34 L40 34 Q35 34 35 28 Q35 22 40 22 L50 22 Q55 22 55 27 L55 29 L47 29 L47 27 Q47 26 45 26 L42 26 Q40 26 40 28 Q40 30 42 30 L50 30 Q55 30 55 36 Q55 40 50 40 Z" fill="url(#rsGradient)" stroke="#ff0000" strokeWidth="0.5" />
+    <path d="M0 45 L100 45" stroke="#ff0000" strokeWidth="2" strokeLinecap="square" />
+    <path d="M0 48 L20 48 L25 50 L100 50" stroke="#ff0000" strokeWidth="1" opacity="0.6" />
+  </svg>
+);
+
+const MercedesAMGLogo = ({ size = 40 }) => (
+  <svg width={size * 1.5} height={size * 0.5} viewBox="0 0 150 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="amgGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" style={{ stopColor: '#00d4aa', stopOpacity: 1 }} />
+        <stop offset="100%" style={{ stopColor: '#008866', stopOpacity: 1 }} />
+      </linearGradient>
+    </defs>
+    <path d="M5 40 L15 10 L25 10 L35 40 L27 40 L24 30 L16 30 L13 40 Z M18 24 L22 24 L20 16 Z" fill="url(#amgGradient)" stroke="#00d4aa" strokeWidth="0.5" />
+    <path d="M40 40 L40 10 L48 10 L55 28 L62 10 L70 10 L70 40 L63 40 L63 20 L57 35 L53 35 L47 20 L47 40 Z" fill="url(#amgGradient)" stroke="#00d4aa" strokeWidth="0.5" />
+    <path d="M75 40 Q72 40 72 37 L72 13 Q72 10 75 10 L95 10 Q98 10 98 13 L98 18 L90 18 L90 15 Q90 14 88 14 L77 14 Q75 14 75 16 L75 34 Q75 36 77 36 L88 36 Q90 36 90 34 L90 28 L82 28 L82 24 L98 24 L98 37 Q98 40 95 40 Z" fill="url(#amgGradient)" stroke="#00d4aa" strokeWidth="0.5" />
+    <path d="M0 45 L150 45" stroke="#00d4aa" strokeWidth="2" strokeLinecap="square" />
+    <path d="M0 48 L150 48" stroke="#00d4aa" strokeWidth="1" opacity="0.5" />
+  </svg>
+);
+
 export default function BrandSelector({ brand, models: initialModels, brandGroups }) {
   const router = useRouter();
   const { t } = useLanguage();
@@ -194,15 +236,30 @@ export default function BrandSelector({ brand, models: initialModels, brandGroup
                 return 'var(--primary)';
               };
 
+              // Get the appropriate logo for performance groups
+              const getGroupLogo = () => {
+                if (!group.isPerformance) return null;
+                const groupName = (group.name || '').toUpperCase();
+                const logoSize = 32;
+
+                if (groupName === 'M') {
+                  return <BMWMLogo size={logoSize} />;
+                } else if (groupName === 'RS') {
+                  return <AudiRSLogo size={logoSize} />;
+                } else if (groupName === 'AMG') {
+                  return <MercedesAMGLogo size={logoSize} />;
+                }
+                return <Zap size={16} />;
+              };
+
               return (
                 <button
                   key={group.id}
                   style={getGroupStyle()}
                   onClick={() => handleGroup(group.id)}
                 >
-                  {/* {group.isPerformance && <span style={{ fontSize: '1.2rem' }}>{getGroupIcon()}</span>} */}
-                  {group.isPerformance && <Zap size={16} />}
-                  <span>{group.displayName || group.name}</span>
+                  {group.isPerformance && getGroupLogo()}
+                  {!group.isPerformance && <span>{group.displayName || group.name}</span>}
                 </button>
               );
             })}

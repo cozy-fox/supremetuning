@@ -13,6 +13,9 @@ import {
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import EditDialog from '@/components/EditDialog';
+import AddEngineDialog from '@/components/AddEngineDialog';
+import AddGroupDialog from '@/components/AddGroupDialog';
+import EditGroupDialog from '@/components/EditGroupDialog';
 import BackupSection from '@/components/BackupSection';
 
 export default function AdminPage() {
@@ -54,6 +57,9 @@ export default function AdminPage() {
   const [deleteDialog, setDeleteDialog] = useState({ show: false, message: '', onConfirm: null });
   const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null, confirmText: 'Confirm' });
   const [moveDialog, setMoveDialog] = useState({ show: false, itemType: '', itemId: null, itemName: '', targets: [] });
+  const [addEngineDialog, setAddEngineDialog] = useState({ show: false });
+  const [addGroupDialog, setAddGroupDialog] = useState({ show: false });
+  const [editGroupDialog, setEditGroupDialog] = useState({ show: false, groupData: null });
 
   // Global operation loading state to prevent multiple simultaneous operations
   const [operationInProgress, setOperationInProgress] = useState(false);
@@ -730,42 +736,78 @@ export default function AdminPage() {
     }
   };
 
-  // Rename group
+  // Edit group
   const renameGroup = (groupId, currentName) => {
-    setEditDialog({
+    // Find the full group data
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return;
+
+    setEditGroupDialog({
       show: true,
-      title: 'Rename Group',
-      value: currentName,
-      onConfirm: (newName) => performRenameGroup(groupId, newName)
+      groupData: group
     });
   };
 
-  const performRenameGroup = async (groupId, newName) => {
-    if (!newName || newName.trim() === '') return;
+  const performRenameGroup = async (groupId, formData) => {
+    if (!formData.name || formData.name.trim() === '') return;
 
     try {
       await fetchAPI('admin/group', {
         method: 'PUT',
         isProtected: true,
-        body: JSON.stringify({ id: groupId, name: newName.trim() }),
+        body: JSON.stringify({
+          id: groupId,
+          name: formData.name.trim(),
+          displayName: formData.displayName?.trim() || null,
+          description: formData.description?.trim() || null,
+          isPerformance: formData.isPerformance || false,
+          color: formData.color || null,
+          icon: formData.icon || null,
+          tagline: formData.tagline?.trim() || null,
+          logo: formData.logo || null
+        }),
       });
 
       // Update local state
       setGroups(groups.map(g =>
         g.id === groupId
-          ? { ...g, name: newName.trim(), slug: newName.toLowerCase().replace(/\s+/g, '-') }
+          ? {
+              ...g,
+              name: formData.name.trim(),
+              displayName: formData.displayName?.trim() || null,
+              description: formData.description?.trim() || null,
+              isPerformance: formData.isPerformance || false,
+              color: formData.color || null,
+              icon: formData.icon || null,
+              tagline: formData.tagline?.trim() || null,
+              logo: formData.logo || null,
+              slug: formData.name.toLowerCase().replace(/\s+/g, '-')
+            }
           : g
       ));
 
-      // Update selected group if it's the one being renamed
+      // Update selected group if it's the one being edited
       if (selectedGroup?.id === groupId) {
-        setSelectedGroup({ ...selectedGroup, name: newName.trim(), slug: newName.toLowerCase().replace(/\s+/g, '-') });
+        setSelectedGroup({
+          ...selectedGroup,
+          name: formData.name.trim(),
+          displayName: formData.displayName?.trim() || null,
+          description: formData.description?.trim() || null,
+          isPerformance: formData.isPerformance || false,
+          color: formData.color || null,
+          icon: formData.icon || null,
+          tagline: formData.tagline?.trim() || null,
+          logo: formData.logo || null,
+          slug: formData.name.toLowerCase().replace(/\s+/g, '-')
+        });
       }
 
-      setDataMessage({ type: 'success', text: 'Group renamed successfully' });
-      showToast('Group renamed successfully', 'success');
+      setDataMessage({ type: 'success', text: 'Group updated successfully' });
+      showToast('Group updated successfully', 'success');
+      setEditGroupDialog({ show: false, groupData: null });
     } catch (error) {
-      setDataMessage({ type: 'error', text: 'Failed to rename: ' + error.message });
+      setDataMessage({ type: 'error', text: 'Failed to update group: ' + error.message });
+      showToast('Failed to update group: ' + error.message, 'error');
     }
   };
 
@@ -776,16 +818,11 @@ export default function AdminPage() {
       return;
     }
 
-    setEditDialog({
-      show: true,
-      title: 'Add New Group',
-      value: '',
-      onConfirm: (name) => performAddGroup(name)
-    });
+    setAddGroupDialog({ show: true });
   };
 
-  const performAddGroup = async (name) => {
-    if (!name || name.trim() === '') return;
+  const performAddGroup = async (formData) => {
+    if (!formData.name || formData.name.trim() === '') return;
 
     try {
       const response = await fetchAPI('admin/group', {
@@ -793,8 +830,14 @@ export default function AdminPage() {
         isProtected: true,
         body: JSON.stringify({
           brandId: selectedBrand.id,
-          name: name.trim(),
-          isPerformance: false,
+          name: formData.name.trim(),
+          displayName: formData.displayName?.trim() || null,
+          description: formData.description?.trim() || null,
+          isPerformance: formData.isPerformance || false,
+          color: formData.color || null,
+          icon: formData.icon || null,
+          tagline: formData.tagline?.trim() || null,
+          logo: formData.logo || null,
           order: groups.length
         }),
       });
@@ -805,6 +848,7 @@ export default function AdminPage() {
 
       setDataMessage({ type: 'success', text: 'Group added successfully' });
       showToast('Group added successfully', 'success');
+      setAddGroupDialog({ show: false });
     } catch (error) {
       setDataMessage({ type: 'error', text: 'Failed to add group: ' + error.message });
       showToast('Failed to add group: ' + error.message, 'error');
@@ -899,34 +943,103 @@ export default function AdminPage() {
       return;
     }
 
-    setEditDialog({
-      show: true,
-      title: 'Add New Engine',
-      value: '',
-      onConfirm: (name) => performAddEngine(name)
-    });
+    setAddEngineDialog({ show: true });
   };
 
-  const performAddEngine = async (name) => {
-    if (!name || name.trim() === '') return;
+  const performAddEngine = async (formData) => {
+    if (!formData.name || formData.name.trim() === '') return;
 
     try {
-      const response = await fetchAPI('admin/engine', {
+      // Create the engine
+      const engineResponse = await fetchAPI('admin/engine', {
         method: 'POST',
         isProtected: true,
         body: JSON.stringify({
           typeId: selectedType.id,
-          name: name.trim(),
-          type: 'Diesel'  // Default engine type
+          name: formData.name.trim(),
+          type: formData.engineType || 'Diesel',
+          power: formData.stockPower ? parseInt(formData.stockPower) : null,
+          torque: null
         }),
       });
 
-      // Add to local state
-      const newEngine = response.engine;
-      setEngines([...engines, newEngine]);
+      const newEngine = engineResponse.engine;
 
-      setDataMessage({ type: 'success', text: 'Engine added successfully' });
-      showToast('Engine added successfully', 'success');
+      // Create stages if requested
+      if (formData.createStages) {
+        const stagesToCreate = [];
+
+        if (formData.stages.stage1) {
+          stagesToCreate.push({
+            stageName: 'Stage 1',
+            stockHp: formData.stockPower ? parseInt(formData.stockPower) : 0,
+            tunedHp: formData.tunedPower ? parseInt(formData.tunedPower) : 0,
+            stockNm: 0,
+            tunedNm: 0,
+            price: 0,
+            ecuUnlock: formData.ecuUnlock || false,
+            cpcUpgrade: formData.cpcUpgrade || false
+          });
+        }
+
+        if (formData.stages.stage1Plus) {
+          stagesToCreate.push({
+            stageName: 'Stage 1+',
+            stockHp: formData.stockPower ? parseInt(formData.stockPower) : 0,
+            tunedHp: formData.tunedPower ? Math.round(parseInt(formData.tunedPower) * 1.05) : 0,
+            stockNm: 0,
+            tunedNm: 0,
+            price: 0,
+            ecuUnlock: formData.ecuUnlock || false,
+            cpcUpgrade: formData.cpcUpgrade || false
+          });
+        }
+
+        if (formData.stages.stage2) {
+          stagesToCreate.push({
+            stageName: 'Stage 2',
+            stockHp: formData.stockPower ? parseInt(formData.stockPower) : 0,
+            tunedHp: formData.tunedPower ? Math.round(parseInt(formData.tunedPower) * 1.1) : 0,
+            stockNm: 0,
+            tunedNm: 0,
+            price: 0,
+            ecuUnlock: formData.ecuUnlock || false,
+            cpcUpgrade: formData.cpcUpgrade || false
+          });
+        }
+
+        if (formData.stages.stage2Plus) {
+          stagesToCreate.push({
+            stageName: 'Stage 2+',
+            stockHp: formData.stockPower ? parseInt(formData.stockPower) : 0,
+            tunedHp: formData.tunedPower ? Math.round(parseInt(formData.tunedPower) * 1.15) : 0,
+            stockNm: 0,
+            tunedNm: 0,
+            price: 0,
+            ecuUnlock: formData.ecuUnlock || false,
+            cpcUpgrade: formData.cpcUpgrade || false
+          });
+        }
+
+        // Create all stages
+        for (const stageData of stagesToCreate) {
+          await fetchAPI('admin/stage', {
+            method: 'POST',
+            isProtected: true,
+            body: JSON.stringify({
+              engineId: newEngine.id,
+              ...stageData
+            }),
+          });
+        }
+      }
+
+      // Add to local state
+      setEngines([...engines, newEngine]);
+      setAddEngineDialog({ show: false });
+
+      setDataMessage({ type: 'success', text: `Engine added successfully${formData.createStages ? ' with stages' : ''}` });
+      showToast(`Engine added successfully${formData.createStages ? ' with stages' : ''}`, 'success');
     } catch (error) {
       setDataMessage({ type: 'error', text: 'Failed to add engine: ' + error.message });
       showToast('Failed to add engine: ' + error.message, 'error');
@@ -1318,6 +1431,37 @@ export default function AdminPage() {
           setEditDialog({ show: false, title: '', value: '', onConfirm: null });
         }}
         onCancel={() => setEditDialog({ show: false, title: '', value: '', onConfirm: null })}
+      />
+
+      {/* Add Group Dialog */}
+      <AddGroupDialog
+        show={addGroupDialog.show}
+        onConfirm={(formData) => {
+          performAddGroup(formData);
+        }}
+        onCancel={() => setAddGroupDialog({ show: false })}
+        brandName={selectedBrand?.name}
+      />
+
+      {/* Edit Group Dialog */}
+      <EditGroupDialog
+        show={editGroupDialog.show}
+        onConfirm={(formData) => {
+          performRenameGroup(editGroupDialog.groupData?.id, formData);
+        }}
+        onCancel={() => setEditGroupDialog({ show: false, groupData: null })}
+        brandName={selectedBrand?.name}
+        groupData={editGroupDialog.groupData}
+      />
+
+      {/* Add Engine Dialog */}
+      <AddEngineDialog
+        show={addEngineDialog.show}
+        onConfirm={(formData) => {
+          performAddEngine(formData);
+        }}
+        onCancel={() => setAddEngineDialog({ show: false })}
+        brandName={selectedBrand?.name}
       />
 
       {/* Move Dialog */}

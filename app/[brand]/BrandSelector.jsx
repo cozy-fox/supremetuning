@@ -5,14 +5,21 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthContext';
 import { useLanguage } from '@/components/LanguageContext';
 import { Search, Car, Settings, Gauge, ChevronRight, Zap } from 'lucide-react';
+import { BMWMLogo, AudiRSLogo, MercedesAMGLogo } from '@/components/BrandLogos';
 
-export default function BrandSelector({ brand, models: initialModels, brandGroups }) {
+export default function BrandSelector({
+  brand,
+  models: initialModels,
+  brandGroups,
+  selectedGroupId = null,
+  hideGroupSelector = false
+}) {
   const router = useRouter();
   const { fetchAPI } = useAuth();
   const { t } = useLanguage();
 
   // Group selection state (for Audi RS, BMW M, Mercedes-AMG)
-  const [selGroup, setSelGroup] = useState(null);
+  const [selGroup, setSelGroup] = useState(selectedGroupId);
   const [filteredModels, setFilteredModels] = useState(initialModels);
 
   const [types, setTypes] = useState([]);
@@ -27,7 +34,7 @@ export default function BrandSelector({ brand, models: initialModels, brandGroup
   // Extract group configuration
   const hasGroups = brandGroups?.hasGroups || false;
   const groups = brandGroups?.groups || [];
-  const defaultGroupId = brandGroups?.defaultGroupId || null;
+  const defaultGroupId = selectedGroupId || brandGroups?.defaultGroupId || null;
 
   // Handle group selection (for brands with performance divisions)
   const handleGroup = useCallback(async (groupId) => {
@@ -130,7 +137,7 @@ export default function BrandSelector({ brand, models: initialModels, brandGroup
   return (
     <div className="selector-container animate-in" style={{ marginTop: '32px' }}>
       {/* Group Selection for brands with performance divisions */}
-      {hasGroups && (
+      {hasGroups && !hideGroupSelector && (
         <div className="group-selector-row" style={{ marginBottom: '32px' }}>
           <div className="group-buttons" style={{
             display: 'flex',
@@ -206,6 +213,22 @@ export default function BrandSelector({ brand, models: initialModels, brandGroup
                 };
               };
 
+              // Get the appropriate logo for performance groups
+              const getGroupLogo = () => {
+                if (!group.isPerformance) return null;
+                const groupName = (group.name || '').toUpperCase();
+                const logoSize = 32;
+
+                if (groupName === 'M') {
+                  return <BMWMLogo size={logoSize} />;
+                } else if (groupName === 'RS') {
+                  return <AudiRSLogo size={logoSize} />;
+                } else if (groupName === 'AMG') {
+                  return <MercedesAMGLogo size={logoSize} />;
+                }
+                return <Zap size={18} style={{ filter: 'drop-shadow(0 0 4px currentColor)' }} />;
+              };
+
               return (
                 <button
                   key={group.id}
@@ -218,8 +241,8 @@ export default function BrandSelector({ brand, models: initialModels, brandGroup
                     Object.assign(e.currentTarget.style, getGroupStyle());
                   }}
                 >
-                  {group.isPerformance && <Zap size={18} style={{ filter: 'drop-shadow(0 0 4px currentColor)' }} />}
-                  <span>{group.displayName || group.name}</span>
+                  {group.isPerformance && getGroupLogo()}
+                  {!group.isPerformance && <span>{group.displayName || group.name}</span>}
                 </button>
               );
             })}

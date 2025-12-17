@@ -119,9 +119,9 @@ function StageSection({ stage, stageIndex, vehicleInfo, isStage2, isAdmin, fetch
   const maxPower = Math.max(tunedHp, stockHp, 400) * 1.1;
   const maxTorque = Math.max(tunedNm, stockNm, 500) * 1.1;
 
-  // Check if ECU unlock is required
-  const ecuUnlock = stage.ecuUnlock;
-  const hasEcuUnlock = ecuUnlock && ecuUnlock.required;
+  // Check if ECU unlock or CPC upgrade is required
+  const hasEcuUnlock = stage.ecuUnlock === true;
+  const hasCpcUpgrade = stage.cpcUpgrade === true;
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -240,7 +240,7 @@ function StageSection({ stage, stageIndex, vehicleInfo, isStage2, isAdmin, fetch
             </div>
           )}
 
-          {/* ECU Unlock Warning */}
+          {/* ECU Unlock Warning (BMW) */}
           {hasEcuUnlock && (
             <div className="ecu-unlock-warning" style={{
               marginTop: '16px',
@@ -254,27 +254,41 @@ function StageSection({ stage, stageIndex, vehicleInfo, isStage2, isAdmin, fetch
                 alignItems: 'center',
                 gap: '8px',
                 color: '#ffaa00',
-                marginBottom: '12px',
+                marginBottom: '8px',
                 fontSize: '14px',
                 fontWeight: '600'
               }}>
                 <Unlock size={18} /> {t('ecuUnlockRequired')}
               </h4>
-              {ecuUnlock.fromDate && (
-                <p style={{ fontSize: '13px', color: '#ccc', marginBottom: '8px' }}>
-                  <strong>{t('fromDate')}:</strong> {ecuUnlock.fromDate}
-                </p>
-              )}
-              {ecuUnlock.extraCost && (
-                <p style={{ fontSize: '13px', color: '#ccc', marginBottom: '8px' }}>
-                  <strong>{t('extraCost')}:</strong> {ecuUnlock.extraCost}
-                </p>
-              )}
-              {ecuUnlock.note && (
-                <p style={{ fontSize: '12px', color: '#aaa', lineHeight: '1.5' }}>
-                  {ecuUnlock.note}
-                </p>
-              )}
+              <p style={{ fontSize: '13px', color: '#ccc', lineHeight: '1.5' }}>
+                This BMW requires ECU unlocking for tuning. Additional cost may apply.
+              </p>
+            </div>
+          )}
+
+          {/* CPC Upgrade Warning (Mercedes) */}
+          {hasCpcUpgrade && (
+            <div className="cpc-upgrade-warning" style={{
+              marginTop: '16px',
+              padding: '16px',
+              background: 'linear-gradient(135deg, rgba(0, 212, 170, 0.15) 0%, rgba(0, 170, 136, 0.1) 100%)',
+              border: '1px solid rgba(0, 212, 170, 0.4)',
+              borderRadius: '8px'
+            }}>
+              <h4 style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#00d4aa',
+                marginBottom: '8px',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}>
+                <Unlock size={18} /> {t('cpcUpgradeRequired') || 'CPC Upgrade Required'}
+              </h4>
+              <p style={{ fontSize: '13px', color: '#ccc', lineHeight: '1.5' }}>
+                This Mercedes requires CPC (Command Performance Control) upgrade for optimal tuning results.
+              </p>
             </div>
           )}
 
