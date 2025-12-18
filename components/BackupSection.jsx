@@ -1,4 +1,7 @@
+'use client';
+
 import { Archive, RefreshCw, Save, Download, Upload, Trash2, History, Clock, ChevronDown, ChevronUp, AlertCircle, Check, Database } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
 
 /**
  * Production-Grade Backup Section Component
@@ -18,6 +21,8 @@ export default function BackupSection({
   showAuditLogs,
   setShowAuditLogs
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="card" style={{ marginBottom: '24px' }}>
       <div
@@ -32,7 +37,7 @@ export default function BackupSection({
       >
         <h3 style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: 0 }}>
           <Database size={24} color="#a8b0b8" />
-          Production Backup System
+          {t('productionBackupSystem') || 'Production Backup System'}
         </h3>
         {showBackups ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
       </div>
@@ -69,7 +74,7 @@ export default function BackupSection({
               style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
             >
               <History size={16} />
-              {showAuditLogs ? 'Hide' : 'Show'} Change History
+              {showAuditLogs ? (t('hideChangeHistory') || 'Hide Change History') : (t('showChangeHistory') || 'Show Change History')}
             </button>
           </div>
 
@@ -98,7 +103,7 @@ export default function BackupSection({
             <div style={{ marginBottom: '24px' }}>
               <h4 style={{ marginBottom: '16px', fontSize: '0.95rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Archive size={18} />
-                Full Database Backups ({fullBackups.length})
+                {t('fullDatabaseBackups') || 'Full Database Backups'} ({fullBackups.length})
               </h4>
               <div style={{
                 maxHeight: '400px',
@@ -132,7 +137,7 @@ export default function BackupSection({
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <Database size={16} color="var(--primary)" />
-                          Full Backup #{fullBackups.length - index}
+                          {t('fullBackup') || 'Full Backup'} #{fullBackups.length - index}
                           <span style={{
                             fontSize: '0.75rem',
                             padding: '2px 8px',
@@ -176,7 +181,7 @@ export default function BackupSection({
                           }}
                         >
                           <Upload size={14} />
-                          Restore
+                          {t('restore') || 'Restore'}
                         </button>
                       )}
                     </div>
@@ -196,7 +201,7 @@ export default function BackupSection({
             <div>
               <h4 style={{ marginBottom: '16px', fontSize: '0.95rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <History size={18} />
-                Change History ({auditLogs.length} recent changes)
+                {t('changeHistory') || 'Change History'} ({auditLogs.length} {t('recentChanges') || 'recent changes'})
               </h4>
               <div style={{
                 maxHeight: '500px',
@@ -251,7 +256,7 @@ export default function BackupSection({
                         </div>
                         {log.changes && Object.keys(log.changes).length > 0 && (
                           <div style={{ fontSize: '0.75rem', marginTop: '8px', padding: '8px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px' }}>
-                            <div style={{ fontWeight: '600', marginBottom: '4px', color: 'var(--primary)' }}>Changed fields:</div>
+                            <div style={{ fontWeight: '600', marginBottom: '4px', color: 'var(--primary)' }}>{t('changedFields') || 'Changed fields:'}</div>
                             {Object.entries(log.resolvedChanges || log.changes).map(([field, change]) => {
                               // Display field name without 'Id' suffix if it's an ID field
                               const displayField = field.endsWith('Id') ? field.replace('Id', '') : field;

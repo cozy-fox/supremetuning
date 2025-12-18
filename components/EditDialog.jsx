@@ -2,15 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { Edit2 } from 'lucide-react';
+import { useLanguage } from '@/components/LanguageContext';
 
-export default function EditDialog({ show, title, value, onConfirm, onCancel, placeholder = 'Enter new name' }) {
+export default function EditDialog({ show, title, value, onConfirm, onCancel, placeholder }) {
   const [inputValue, setInputValue] = useState(value || '');
+  const { t } = useLanguage();
 
   useEffect(() => {
     setInputValue(value || '');
   }, [value, show]);
 
   if (!show) return null;
+
+  const defaultPlaceholder = t('enterNewName') || 'Enter new name';
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -74,7 +78,7 @@ export default function EditDialog({ show, title, value, onConfirm, onCancel, pl
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder={placeholder}
+            placeholder={placeholder || defaultPlaceholder}
             autoFocus
             style={{
               width: '100%',
@@ -99,7 +103,7 @@ export default function EditDialog({ show, title, value, onConfirm, onCancel, pl
                 border: '1px solid rgba(255, 255, 255, 0.2)'
               }}
             >
-              Cancel
+              {t('cancel') || 'Cancel'}
             </button>
             <button
               type="submit"
@@ -113,7 +117,7 @@ export default function EditDialog({ show, title, value, onConfirm, onCancel, pl
               }}
               disabled={!inputValue.trim()}
             >
-              Save
+              {t('save') || 'Save'}
             </button>
           </div>
         </form>

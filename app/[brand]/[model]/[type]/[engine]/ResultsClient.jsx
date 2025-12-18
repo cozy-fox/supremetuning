@@ -261,7 +261,7 @@ function StageSection({ stage, stageIndex, vehicleInfo, isStage2, isAdmin, fetch
                 <Unlock size={18} /> {t('ecuUnlockRequired')}
               </h4>
               <p style={{ fontSize: '13px', color: '#ccc', lineHeight: '1.5' }}>
-                This BMW requires ECU unlocking for tuning. Additional cost may apply.
+                {t('ecuUnlockDescription') || 'This BMW requires ECU unlocking for tuning. Additional cost may apply.'}
               </p>
             </div>
           )}
@@ -287,7 +287,7 @@ function StageSection({ stage, stageIndex, vehicleInfo, isStage2, isAdmin, fetch
                 <Unlock size={18} /> {t('cpcUpgradeRequired') || 'CPC Upgrade Required'}
               </h4>
               <p style={{ fontSize: '13px', color: '#ccc', lineHeight: '1.5' }}>
-                This Mercedes requires CPC (Command Performance Control) upgrade for optimal tuning results.
+                {t('cpcUpgradeDescription') || 'This Mercedes requires CPC (Command Performance Control) upgrade for optimal tuning results.'}
               </p>
             </div>
           )}

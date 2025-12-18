@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { DollarSign, ChevronDown, Loader2 } from 'lucide-react';
+import { useLanguage } from '@/components/LanguageContext';
 
-export default function BulkUpdateDialog({ 
+export default function BulkUpdateDialog({
   show, 
   onClose, 
   onUpdate,
@@ -36,6 +37,8 @@ export default function BulkUpdateDialog({
   });
   
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const { t } = useLanguage();
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -227,16 +230,16 @@ export default function BulkUpdateDialog({
           >
             <DollarSign size={32} color="#00ff88" />
           </div>
-          <h3 style={{ margin: '0 0 8px 0' }}>Bulk Price Update</h3>
+          <h3 style={{ margin: '0 0 8px 0' }}>{t('bulkPriceUpdate') || 'Bulk Price Update'}</h3>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>
-            Update prices for multiple stages at once
+            {t('updatePricesMultiple') || 'Update prices for multiple stages at once'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit}>
           {/* Level Selection */}
           <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>Update Level</label>
+            <label style={labelStyle}>{t('updateLevel') || 'Update Level'}</label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }} className="dialog-grid-4">
               {['brand', 'model', 'generation', 'engine'].map((l) => (
                 <button
@@ -262,7 +265,7 @@ export default function BulkUpdateDialog({
 
           {/* Hierarchical Selectors */}
           <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>Brand</label>
+            <label style={labelStyle}>{t('brand') || 'Brand'}</label>
             <select
               value={selectedBrand}
               onChange={(e) => {
@@ -274,7 +277,7 @@ export default function BulkUpdateDialog({
               }}
               style={selectStyle}
             >
-              <option value="">Select Brand</option>
+              <option value="">{t('selectBrand') || '-- Select Brand --'}</option>
               {brands.map(b => (
                 <option key={b.id} value={b.id}>{b.name}</option>
               ))}
@@ -284,7 +287,7 @@ export default function BulkUpdateDialog({
           {level !== 'brand' && selectedBrand && (
             <>
               <div style={{ marginBottom: '16px' }}>
-                <label style={labelStyle}>Group (Optional Filter)</label>
+                <label style={labelStyle}>{t('groupOptionalFilter') || 'Group (Optional Filter)'}</label>
                 <select
                   value={selectedGroup}
                   onChange={(e) => {
@@ -295,7 +298,7 @@ export default function BulkUpdateDialog({
                   }}
                   style={selectStyle}
                 >
-                  <option value="">All Groups</option>
+                  <option value="">{t('allGroups') || 'All Groups'}</option>
                   {filteredGroups.map(g => (
                     <option key={g.id} value={g.id}>{g.name}</option>
                   ))}
@@ -303,7 +306,7 @@ export default function BulkUpdateDialog({
               </div>
 
               <div style={{ marginBottom: '16px' }}>
-                <label style={labelStyle}>Model</label>
+                <label style={labelStyle}>{t('model') || 'Model'}</label>
                 <select
                   value={selectedModel}
                   onChange={(e) => {
@@ -314,7 +317,7 @@ export default function BulkUpdateDialog({
                   style={selectStyle}
                   disabled={level === 'brand'}
                 >
-                  <option value="">Select Model</option>
+                  <option value="">{t('selectModel') || '-- Select Model --'}</option>
                   {filteredModels.map(m => (
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
@@ -325,7 +328,7 @@ export default function BulkUpdateDialog({
 
           {(level === 'generation' || level === 'engine') && selectedModel && (
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Generation</label>
+              <label style={labelStyle}>{t('generation') || 'Generation'}</label>
               <select
                 value={selectedGeneration}
                 onChange={(e) => {
@@ -334,7 +337,7 @@ export default function BulkUpdateDialog({
                 }}
                 style={selectStyle}
               >
-                <option value="">Select Generation</option>
+                <option value="">{t('selectGeneration') || '-- Select Generation --'}</option>
                 {filteredGenerations.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
@@ -344,13 +347,13 @@ export default function BulkUpdateDialog({
 
           {level === 'engine' && selectedGeneration && (
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Engine</label>
+              <label style={labelStyle}>{t('engine') || 'Engine'}</label>
               <select
                 value={selectedEngine}
                 onChange={(e) => setSelectedEngine(e.target.value)}
                 style={selectStyle}
               >
-                <option value="">Select Engine</option>
+                <option value="">{t('selectEngine') || '-- Select Engine --'}</option>
                 {filteredEngines.map(e => (
                   <option key={e.id} value={e.id}>{e.name}</option>
                 ))}
@@ -360,28 +363,28 @@ export default function BulkUpdateDialog({
 
           {/* Update Type Selection */}
           <div style={{ marginBottom: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-            <label style={labelStyle}>Update Type</label>
+            <label style={labelStyle}>{t('updateType') || 'Update Type'}</label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }} className="dialog-grid-3">
               {[
-                { value: 'percentage', label: 'Percentage' },
-                { value: 'fixed', label: 'Fixed Price' },
-                { value: 'absolute', label: 'Per Stage' }
-              ].map((t) => (
+                { value: 'percentage', label: t('percentage') || 'Percentage' },
+                { value: 'fixed', label: t('fixedPrice') || 'Fixed Price' },
+                { value: 'absolute', label: t('perStage') || 'Per Stage' }
+              ].map((type) => (
                 <button
-                  key={t.value}
+                  key={type.value}
                   type="button"
-                  onClick={() => setUpdateType(t.value)}
+                  onClick={() => setUpdateType(type.value)}
                   style={{
                     padding: '10px 8px',
                     borderRadius: '8px',
-                    border: updateType === t.value ? '2px solid #00ff88' : '1px solid var(--border)',
-                    background: updateType === t.value ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                    color: updateType === t.value ? '#00ff88' : 'var(--text-main)',
+                    border: updateType === type.value ? '2px solid #00ff88' : '1px solid var(--border)',
+                    background: updateType === type.value ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                    color: updateType === type.value ? '#00ff88' : 'var(--text-main)',
                     fontSize: '0.85rem',
                     cursor: 'pointer'
                   }}
                 >
-                  {t.label}
+                  {type.label}
                 </button>
               ))}
             </div>
@@ -392,18 +395,18 @@ export default function BulkUpdateDialog({
             <div style={{ marginBottom: '16px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }} className="dialog-grid-2">
                 <div>
-                  <label style={labelStyle}>Operation</label>
+                  <label style={labelStyle}>{t('operation') || 'Operation'}</label>
                   <select
                     value={operation}
                     onChange={(e) => setOperation(e.target.value)}
                     style={selectStyle}
                   >
-                    <option value="increase">Increase</option>
-                    <option value="decrease">Decrease</option>
+                    <option value="increase">{t('increase') || 'Increase'}</option>
+                    <option value="decrease">{t('decrease') || 'Decrease'}</option>
                   </select>
                 </div>
                 <div>
-                  <label style={labelStyle}>Percentage (%)</label>
+                  <label style={labelStyle}>{t('percentageLabel') || 'Percentage (%)'}</label>
                   <input
                     type="number"
                     value={percentageValue}
@@ -422,7 +425,7 @@ export default function BulkUpdateDialog({
           {/* Fixed Price Update */}
           {updateType === 'fixed' && (
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Set All Prices To (€)</label>
+              <label style={labelStyle}>{t('setAllPricesTo') || 'Set All Prices To (€)'}</label>
               <input
                 type="number"
                 value={absolutePrice}
@@ -437,7 +440,7 @@ export default function BulkUpdateDialog({
           {/* Per-Stage Price Update */}
           {updateType === 'absolute' && (
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Stage Prices (€) - Leave empty to skip</label>
+              <label style={labelStyle}>{t('stagePricesLeaveEmpty') || 'Stage Prices (€) - Leave empty to skip'}</label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }} className="dialog-grid-2">
                 <div>
                   <label style={{ ...labelStyle, fontSize: '0.75rem' }}>Stage 1</label>
@@ -497,7 +500,7 @@ export default function BulkUpdateDialog({
               border: '1px solid rgba(0, 255, 136, 0.2)'
             }}>
               <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                This will update prices for all stages under <strong style={{ color: '#00ff88' }}>{getTargetName()}</strong>
+                {t('willUpdatePricesFor') || 'This will update prices for all stages under'} <strong style={{ color: '#00ff88' }}>{getTargetName()}</strong>
               </p>
             </div>
           )}
@@ -515,7 +518,7 @@ export default function BulkUpdateDialog({
               }}
               disabled={isUpdating}
             >
-              Cancel
+              {t('cancel') || 'Cancel'}
             </button>
             <button
               type="submit"
@@ -536,10 +539,10 @@ export default function BulkUpdateDialog({
               {isUpdating ? (
                 <>
                   <Loader2 size={16} className="spin" />
-                  Updating...
+                  {t('updating') || 'Updating...'}
                 </>
               ) : (
-                'Update Prices'
+                t('updatePrices') || 'Update Prices'
               )}
             </button>
           </div>

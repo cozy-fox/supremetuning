@@ -177,7 +177,7 @@ export default function EditGroupDialog({ show, onConfirm, onCancel, brandName, 
           >
             <Edit2 size={32} color="#00ff88" />
           </div>
-          <h3 style={{ margin: '0 0 8px 0' }}>Edit Group</h3>
+          <h3 style={{ margin: '0 0 8px 0' }}>{t('editGroup') || 'Edit Group'}</h3>
           <p style={{ color: '#8a8a8a', fontSize: '0.9rem', margin: 0 }}>
             {brandName}
           </p>

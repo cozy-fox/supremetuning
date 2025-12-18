@@ -341,14 +341,14 @@ export default function AdminPage() {
   const createBackup = async () => {
     setConfirmDialog({
       show: true,
-      message: 'Create a backup of the current database? This will save all brands, models, engines, and stages.',
-      confirmText: 'Create Backup',
+      message: t('confirmCreateBackup') || 'Create a backup of the current database? This will save all brands, models, engines, and stages.',
+      confirmText: t('createBackup') || 'Create Backup',
       onConfirm: () => performCreateBackup()
     });
   };
 
   const performCreateBackup = async () => {
-    setConfirmDialog({ show: false, message: '', onConfirm: null, confirmText: 'Confirm' });
+    setConfirmDialog({ show: false, message: '', onConfirm: null, confirmText: t('confirm') || 'Confirm' });
     setBackupLoading(true);
     setBackupMessage({ type: '', text: '' });
     try {
@@ -402,7 +402,7 @@ export default function AdminPage() {
   const deleteBackup = async (backupId) => {
     setDeleteDialog({
       show: true,
-      message: 'Are you sure you want to delete this backup?',
+      message: t('confirmDeleteBackup') || 'Are you sure you want to delete this backup?',
       onConfirm: () => performDeleteBackup(backupId)
     });
   };
@@ -454,14 +454,14 @@ export default function AdminPage() {
   const createFullBackup = async () => {
     setConfirmDialog({
       show: true,
-      message: 'Create a full database backup? This will create a complete snapshot using MongoDB utilities.',
-      confirmText: 'Create Full Backup',
+      message: t('confirmCreateFullBackup') || 'Create a full database backup? This will create a complete snapshot using MongoDB utilities.',
+      confirmText: t('createFullBackup') || 'Create Full Backup',
       onConfirm: () => performCreateFullBackup()
     });
   };
 
   const performCreateFullBackup = async () => {
-    setConfirmDialog({ show: false, message: '', onConfirm: null, confirmText: 'Confirm' });
+    setConfirmDialog({ show: false, message: '', onConfirm: null, confirmText: t('confirm') || 'Confirm' });
     try {
       await withProgress(async () => {
         const response = await fetchAPI('admin/backup/full', {
@@ -486,14 +486,14 @@ export default function AdminPage() {
   const restoreFullBackup = async (backupId) => {
     setConfirmDialog({
       show: true,
-      message: '⚠️ WARNING: This will restore the entire database from backup. All current data will be replaced. Are you absolutely sure?',
-      confirmText: 'Yes, Restore Database',
+      message: t('confirmRestoreDatabase') || '⚠️ WARNING: This will restore the entire database from backup. All current data will be replaced. Are you absolutely sure?',
+      confirmText: t('yesRestoreDatabase') || 'Yes, Restore Database',
       onConfirm: () => performRestoreFullBackup(backupId)
     });
   };
 
   const performRestoreFullBackup = async (backupId) => {
-    setConfirmDialog({ show: false, message: '', onConfirm: null, confirmText: 'Confirm' });
+    setConfirmDialog({ show: false, message: '', onConfirm: null, confirmText: t('confirm') || 'Confirm' });
     try {
       await withProgress(async () => {
         await fetchAPI('admin/backup/restore', {
@@ -548,7 +548,7 @@ export default function AdminPage() {
   const deleteBrand = async (brandId) => {
     setDeleteDialog({
       show: true,
-      message: 'Are you sure you want to delete this brand and ALL its data (models, types, engines, stages)?',
+      message: t('confirmDeleteBrand') || 'Are you sure you want to delete this brand and ALL its data (models, types, engines, stages)?',
       onConfirm: () => performDeleteBrand(brandId)
     });
   };
@@ -582,7 +582,7 @@ export default function AdminPage() {
   const deleteModel = async (modelId) => {
     setDeleteDialog({
       show: true,
-      message: 'Are you sure you want to delete this model and ALL its data (types, engines, stages)?',
+      message: t('confirmDeleteModel') || 'Are you sure you want to delete this model and ALL its data (types, engines, stages)?',
       onConfirm: () => performDeleteModel(modelId)
     });
   };
@@ -613,7 +613,7 @@ export default function AdminPage() {
   const deleteType = async (typeId) => {
     setDeleteDialog({
       show: true,
-      message: 'Are you sure you want to delete this generation and ALL its data (engines, stages)?',
+      message: t('confirmDeleteGeneration') || 'Are you sure you want to delete this generation and ALL its data (engines, stages)?',
       onConfirm: () => performDeleteType(typeId)
     });
   };
@@ -642,7 +642,7 @@ export default function AdminPage() {
   const deleteEngine = async (engineId) => {
     setDeleteDialog({
       show: true,
-      message: 'Are you sure you want to delete this engine and ALL its stages?',
+      message: t('confirmDeleteEngine') || 'Are you sure you want to delete this engine and ALL its stages?',
       onConfirm: () => performDeleteEngine(engineId)
     });
   };
@@ -708,7 +708,7 @@ export default function AdminPage() {
   const deleteGroup = async (groupId) => {
     setDeleteDialog({
       show: true,
-      message: 'Are you sure you want to delete this group and ALL its data (models, types, engines, stages)?',
+      message: t('confirmDeleteGroup') || 'Are you sure you want to delete this group and ALL its data (models, types, engines, stages)?',
       onConfirm: () => performDeleteGroup(groupId)
     });
   };
@@ -1434,6 +1434,8 @@ export default function AdminPage() {
       <ConfirmDialog
         show={deleteDialog.show}
         message={deleteDialog.message}
+        confirmText={t('delete') || 'Delete'}
+        cancelText={t('cancel') || 'Cancel'}
         onConfirm={() => {
           if (deleteDialog.onConfirm) deleteDialog.onConfirm();
           setDeleteDialog({ show: false, message: '', onConfirm: null });
@@ -1446,11 +1448,12 @@ export default function AdminPage() {
         show={confirmDialog.show}
         message={confirmDialog.message}
         confirmText={confirmDialog.confirmText}
+        cancelText={t('cancel') || 'Cancel'}
         onConfirm={() => {
           if (confirmDialog.onConfirm) confirmDialog.onConfirm();
-          setConfirmDialog({ show: false, message: '', onConfirm: null, confirmText: 'Confirm' });
+          setConfirmDialog({ show: false, message: '', onConfirm: null, confirmText: t('confirm') || 'Confirm' });
         }}
-        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null, confirmText: 'Confirm' })}
+        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: null, confirmText: t('confirm') || 'Confirm' })}
       />
 
       {/* Edit Dialog */}
@@ -1555,6 +1558,7 @@ function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }
   const [groups, setGroups] = useState([]);
   const [models, setModels] = useState([]);
   const [types, setTypes] = useState([]);
+  const { t } = useLanguage();
 
   // Fetch brands on mount
   useEffect(() => {
@@ -1701,10 +1705,10 @@ function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }
           {moveDialog.showConfirmation ? (
             <>
               <h3 style={{ margin: '0 0 8px 0', fontSize: '1.3rem', color: '#ff9800' }}>
-                Confirm Move
+                {t('confirmMove') || 'Confirm Move'}
               </h3>
               <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>
-                Are you sure you want to move this item?
+                {t('confirmMoveQuestion') || 'Are you sure you want to move this item?'}
               </p>
 
               <div style={{
@@ -1715,11 +1719,11 @@ function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }
                 marginBottom: '24px'
               }}>
                 <div style={{ marginBottom: '12px' }}>
-                  <strong style={{ color: '#00ff88' }}>Item:</strong>
+                  <strong style={{ color: '#00ff88' }}>{t('item') || 'Item'}:</strong>
                   <div style={{ marginTop: '4px', fontSize: '1.05rem' }}>{moveDialog.itemName}</div>
                 </div>
                 <div>
-                  <strong style={{ color: '#00ff88' }}>Move to:</strong>
+                  <strong style={{ color: '#00ff88' }}>{t('moveTo') || 'Move to'}:</strong>
                   <div style={{ marginTop: '4px', fontSize: '1.05rem' }}>{getDestinationName()}</div>
                 </div>
               </div>
@@ -1740,7 +1744,7 @@ function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }
                     opacity: isDisabled ? 0.5 : 1
                   }}
                 >
-                  Back
+                  {t('back') || 'Back'}
                 </button>
                 <button
                   onClick={confirmMove}
@@ -1758,7 +1762,7 @@ function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }
                     opacity: isDisabled ? 0.5 : 1
                   }}
                 >
-                  {loading ? 'Moving...' : 'Confirm Move'}
+                  {loading ? (t('moving') || 'Moving...') : (t('confirmMove') || 'Confirm Move')}
                 </button>
               </div>
             </>
@@ -1766,17 +1770,17 @@ function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }
             <>
               {/* Selection View */}
               <h3 style={{ margin: '0 0 8px 0', fontSize: '1.3rem' }}>
-                Move "{moveDialog.itemName}"
+                {t('move') || 'Move'} "{moveDialog.itemName}"
               </h3>
               <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>
-                {moveDialog.itemType === 'model' && 'Select brand and group'}
-                {moveDialog.itemType === 'type' && 'Select brand, group, and model'}
-                {moveDialog.itemType === 'engine' && 'Select brand, group, model, and generation'}
+                {moveDialog.itemType === 'model' && (t('selectBrandAndGroup') || 'Select brand and group')}
+                {moveDialog.itemType === 'type' && (t('selectBrandGroupModel') || 'Select brand, group, and model')}
+                {moveDialog.itemType === 'engine' && (t('selectBrandGroupModelGeneration') || 'Select brand, group, model, and generation')}
               </p>
 
               {/* Brand Selection */}
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>Brand</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>{t('brand') || 'Brand'}</label>
                 <select
                   value={moveDialog.selectedBrand || ''}
                   onChange={(e) => handleBrandSelect(parseInt(e.target.value))}
@@ -1794,7 +1798,7 @@ function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }
                     opacity: isDisabled ? 0.6 : 1
                   }}
                 >
-                  <option value="" style={{ background: '#1a1a1a', color: '#888' }}>-- Select Brand --</option>
+                  <option value="" style={{ background: '#1a1a1a', color: '#888' }}>{t('selectBrand') || '-- Select Brand --'}</option>
                   {brands.map(brand => (
                     <option key={brand.id} value={brand.id} style={{ background: '#1a1a1a', color: '#ffffff' }}>
                       {brand.name}
@@ -1806,7 +1810,7 @@ function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }
               {/* Group Selection */}
               {moveDialog.selectedBrand && (
                 <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>Group</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>{t('group') || 'Group'}</label>
                   <select
                     value={moveDialog.selectedGroup || ''}
                     onChange={(e) => handleGroupSelect(parseInt(e.target.value))}
@@ -1824,7 +1828,7 @@ function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }
                       opacity: isDisabled ? 0.6 : 1
                     }}
                   >
-                    <option value="" style={{ background: '#1a1a1a', color: '#888' }}>-- Select Group --</option>
+                    <option value="" style={{ background: '#1a1a1a', color: '#888' }}>{t('selectGroup') || '-- Select Group --'}</option>
                     {groups.filter(g => g.id !== moveDialog.currentGroupId).map(group => (
                       <option key={group.id} value={group.id} style={{ background: '#1a1a1a', color: '#ffffff' }}>
                         {group.name}
@@ -1837,7 +1841,7 @@ function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }
               {/* Model Selection (for type and engine) */}
               {(moveDialog.itemType === 'type' || moveDialog.itemType === 'engine') && moveDialog.selectedGroup && (
                 <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>Model</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>{t('model') || 'Model'}</label>
                   <select
                     value={moveDialog.selectedModel || ''}
                     onChange={(e) => handleModelSelect(parseInt(e.target.value))}
@@ -1855,7 +1859,7 @@ function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }
                       opacity: isDisabled ? 0.6 : 1
                     }}
                   >
-                    <option value="" style={{ background: '#1a1a1a', color: '#888' }}>-- Select Model --</option>
+                    <option value="" style={{ background: '#1a1a1a', color: '#888' }}>{t('selectModel') || '-- Select Model --'}</option>
                     {models.filter(m => m.id !== moveDialog.currentModelId).map(model => (
                       <option key={model.id} value={model.id} style={{ background: '#1a1a1a', color: '#ffffff' }}>
                         {model.name}
@@ -1868,7 +1872,7 @@ function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }
               {/* Type/Generation Selection (for engine only) */}
               {moveDialog.itemType === 'engine' && moveDialog.selectedModel && (
                 <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>Generation</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>{t('generation') || 'Generation'}</label>
                   <select
                     value={moveDialog.selectedType || ''}
                     onChange={(e) => handleTypeSelect(parseInt(e.target.value))}
@@ -1886,10 +1890,10 @@ function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }
                       opacity: isDisabled ? 0.6 : 1
                     }}
                   >
-                    <option value="" style={{ background: '#1a1a1a', color: '#888' }}>-- Select Generation --</option>
-                    {types.filter(t => t.id !== moveDialog.currentTypeId).map(type => (
-                      <option key={type.id} value={type.id} style={{ background: '#1a1a1a', color: '#ffffff' }}>
-                        {type.name}
+                    <option value="" style={{ background: '#1a1a1a', color: '#888' }}>{t('selectGeneration') || '-- Select Generation --'}</option>
+                    {types.filter(tp => tp.id !== moveDialog.currentTypeId).map(tp => (
+                      <option key={tp.id} value={tp.id} style={{ background: '#1a1a1a', color: '#ffffff' }}>
+                        {tp.name}
                       </option>
                     ))}
                   </select>
@@ -1913,7 +1917,7 @@ function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }
                   opacity: isDisabled ? 0.5 : 1
                 }}
               >
-                Cancel
+                {t('cancel') || 'Cancel'}
               </button>
             </>
           )}
@@ -1958,6 +1962,7 @@ function VisualEditorSection({
   selectedEngine, handleEngineSelect,
   openBulkUpdate
 }) {
+  const { t } = useLanguage();
   return (
     <div className="card" style={{ marginBottom: '24px' }}>
       <div
@@ -1972,7 +1977,7 @@ function VisualEditorSection({
       >
         <h3 style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: 0 }}>
           <Car size={24} color="#a8b0b8" />
-          Data Manager
+          {t('dataManager') || 'Data Manager'}
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {showVisualEditor && (
@@ -1994,10 +1999,10 @@ function VisualEditorSection({
                 fontWeight: '500',
                 cursor: 'pointer'
               }}
-              title="Bulk update prices"
+              title={t('bulkUpdatePrices') || 'Bulk update prices'}
             >
               <DollarSign size={16} />
-              <span className="bulk-btn-text">Bulk Prices</span>
+              <span className="bulk-btn-text">{t('bulkPrices') || 'Bulk Prices'}</span>
             </button>
           )}
           {showVisualEditor ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
@@ -2028,14 +2033,14 @@ function VisualEditorSection({
           {brandsLoading ? (
             <div style={{ textAlign: 'center', padding: '20px' }}>
               <RefreshCw size={24} className="spin" />
-              <p>Loading brands...</p>
+              <p>{t('loadingBrands') || 'Loading brands...'}</p>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
               {/* Brands List */}
               <div style={{ background: 'rgba(50, 55, 60, 0.3)', borderRadius: '8px', padding: '16px' }}>
                 <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', color: 'var(--primary)' }}>
-                  Brands ({brands?.length || 0})
+                  {t('brands') || 'Brands'} ({brands?.length || 0})
                 </h4>
                 <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
                   {brands?.map(brand => (
@@ -2067,7 +2072,7 @@ function VisualEditorSection({
                             cursor: 'pointer',
                             padding: '4px'
                           }}
-                          title="Rename brand"
+                          title={t('renameBrand') || 'Rename brand'}
                         >
                           <Edit2 size={14} />
                         </button>
@@ -2083,7 +2088,7 @@ function VisualEditorSection({
                             cursor: 'pointer',
                             padding: '4px'
                           }}
-                          title="Delete brand"
+                          title={t('deleteBrand') || 'Delete brand'}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -2098,7 +2103,7 @@ function VisualEditorSection({
                 <div style={{ background: 'rgba(50, 55, 60, 0.3)', borderRadius: '8px', padding: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--primary)' }}>
-                      Groups - {selectedBrand.name} ({groups?.length || 0})
+                      {t('groups') || 'Groups'} - {selectedBrand.name} ({groups?.length || 0})
                     </h4>
                     <button
                       onClick={addGroup}
@@ -2112,10 +2117,9 @@ function VisualEditorSection({
                         fontSize: '0.75rem',
                         fontWeight: 'bold'
                       }}
-                      title="Add new group"
+                      title={t('addNewGroup') || 'Add new group'}
                     >
-                      + Add Group
-                    </button>
+                      + {t('addGroup') || 'Add Group'}
                   </div>
                   {groupsLoading ? (
                     <div style={{ textAlign: 'center', padding: '20px' }}>
@@ -2154,7 +2158,7 @@ function VisualEditorSection({
                                 cursor: 'pointer',
                                 padding: '4px'
                               }}
-                              title="Rename group"
+                              title={t('renameGroup') || 'Rename group'}
                             >
                               <Edit2 size={14} />
                             </button>
@@ -2170,7 +2174,7 @@ function VisualEditorSection({
                                 cursor: 'pointer',
                                 padding: '4px'
                               }}
-                              title="Delete group"
+                              title={t('deleteGroup') || 'Delete group'}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -2187,7 +2191,7 @@ function VisualEditorSection({
                 <div style={{ background: 'rgba(50, 55, 60, 0.3)', borderRadius: '8px', padding: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--primary)' }}>
-                      Models - {selectedGroup.name} ({models?.length || 0})
+                      {t('models') || 'Models'} - {selectedGroup.name} ({models?.length || 0})
                     </h4>
                     <button
                       onClick={addModel}
@@ -2203,9 +2207,9 @@ function VisualEditorSection({
                         alignItems: 'center',
                         gap: '4px'
                       }}
-                      title="Add new model"
+                      title={t('addNewModel') || 'Add new model'}
                     >
-                      <Plus size={12} /> Add
+                      <Plus size={12} /> {t('add') || 'Add'}
                     </button>
                   </div>
                   {modelsLoading ? (
@@ -2243,7 +2247,7 @@ function VisualEditorSection({
                               cursor: 'pointer',
                               padding: '4px'
                             }}
-                            title="Move to another group"
+                            title={t('moveToAnotherGroup') || 'Move to another group'}
                           >
                             <MoveRight size={14} />
                           </button>
@@ -2259,7 +2263,7 @@ function VisualEditorSection({
                               cursor: 'pointer',
                               padding: '4px'
                             }}
-                            title="Rename model"
+                            title={t('renameModel') || 'Rename model'}
                           >
                             <Edit2 size={14} />
                           </button>
@@ -2275,7 +2279,7 @@ function VisualEditorSection({
                               cursor: 'pointer',
                               padding: '4px'
                             }}
-                            title="Delete model"
+                            title={t('deleteModel') || 'Delete model'}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -2292,7 +2296,7 @@ function VisualEditorSection({
                 <div style={{ background: 'rgba(50, 55, 60, 0.3)', borderRadius: '8px', padding: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--primary)' }}>
-                      Generations - {selectedModel.name} ({types?.length || 0})
+                      {t('generations') || 'Generations'} - {selectedModel.name} ({types?.length || 0})
                     </h4>
                     <button
                       onClick={addType}
@@ -2308,9 +2312,9 @@ function VisualEditorSection({
                         alignItems: 'center',
                         gap: '4px'
                       }}
-                      title="Add new generation"
+                      title={t('addNewGeneration') || 'Add new generation'}
                     >
-                      <Plus size={12} /> Add
+                      <Plus size={12} /> {t('add') || 'Add'}
                     </button>
                   </div>
                   {typesLoading ? (
@@ -2348,7 +2352,7 @@ function VisualEditorSection({
                               cursor: 'pointer',
                               padding: '4px'
                             }}
-                            title="Move to another model"
+                            title={t('moveToAnotherModel') || 'Move to another model'}
                           >
                             <MoveRight size={14} />
                           </button>
@@ -2364,7 +2368,7 @@ function VisualEditorSection({
                               cursor: 'pointer',
                               padding: '4px'
                             }}
-                            title="Rename generation"
+                            title={t('renameGeneration') || 'Rename generation'}
                           >
                             <Edit2 size={14} />
                           </button>
@@ -2380,7 +2384,7 @@ function VisualEditorSection({
                               cursor: 'pointer',
                               padding: '4px'
                             }}
-                            title="Delete generation"
+                            title={t('deleteGeneration') || 'Delete generation'}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -2397,7 +2401,7 @@ function VisualEditorSection({
                 <div style={{ background: 'rgba(50, 55, 60, 0.3)', borderRadius: '8px', padding: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--primary)' }}>
-                      Engines - {selectedType.name} ({engines?.length || 0})
+                      {t('engines') || 'Engines'} - {selectedType.name} ({engines?.length || 0})
                     </h4>
                     <button
                       onClick={addEngine}
@@ -2413,9 +2417,9 @@ function VisualEditorSection({
                         alignItems: 'center',
                         gap: '4px'
                       }}
-                      title="Add new engine"
+                      title={t('addNewEngine') || 'Add new engine'}
                     >
-                      <Plus size={12} /> Add
+                      <Plus size={12} /> {t('add') || 'Add'}
                     </button>
                   </div>
                   {enginesLoading ? (
@@ -2458,7 +2462,7 @@ function VisualEditorSection({
                               cursor: 'pointer',
                               padding: '4px'
                             }}
-                            title="Move to another generation"
+                            title={t('moveToAnotherGeneration') || 'Move to another generation'}
                           >
                             <MoveRight size={14} />
                           </button>
@@ -2474,7 +2478,7 @@ function VisualEditorSection({
                               cursor: 'pointer',
                               padding: '4px'
                             }}
-                            title="Rename engine"
+                            title={t('renameEngine') || 'Rename engine'}
                           >
                             <Edit2 size={14} />
                           </button>
@@ -2490,7 +2494,7 @@ function VisualEditorSection({
                               cursor: 'pointer',
                               padding: '4px'
                             }}
-                            title="Delete engine"
+                            title={t('deleteEngine') || 'Delete engine'}
                           >
                             <Trash2 size={14} />
                           </button>
