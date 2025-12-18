@@ -371,8 +371,15 @@ input::placeholder {
 }
 
 @keyframes shimmer {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 /* Stage Card Styling */
@@ -418,8 +425,15 @@ input::placeholder {
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-in {
@@ -427,7 +441,9 @@ input::placeholder {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .spin {
@@ -494,7 +510,7 @@ input::placeholder {
   justify-content: center;
   gap: 0;
   padding: 30px 20px;
-  background: linear-gradient(180deg, rgba(100,105,110,0.3) 0%, transparent 100%);
+  background: linear-gradient(180deg, rgba(100, 105, 110, 0.3) 0%, transparent 100%);
 }
 
 .stage-tab {
@@ -512,7 +528,9 @@ input::placeholder {
   transition: all 0.3s ease;
 }
 
-.stage-tab:hover { color: var(--text-main); }
+.stage-tab:hover {
+  color: var(--text-main);
+}
 
 .stage-tab.active {
   color: var(--primary);
@@ -542,9 +560,18 @@ input::placeholder {
   flex-wrap: wrap;
 }
 
-.breadcrumb a { transition: color 0.2s; }
-.breadcrumb a:hover { color: var(--primary); }
-.breadcrumb .current { color: var(--primary); font-weight: 500; }
+.breadcrumb a {
+  transition: color 0.2s;
+}
+
+.breadcrumb a:hover {
+  color: var(--primary);
+}
+
+.breadcrumb .current {
+  color: var(--primary);
+  font-weight: 500;
+}
 
 /* Stage Section */
 .stage-section {
@@ -611,7 +638,10 @@ input::placeholder {
   font-size: 0.95rem;
 }
 
-.feature-list li svg { flex-shrink: 0; margin-top: 2px; }
+.feature-list li svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
 
 /* Upgrade Requirements */
 .upgrade-requirements {
@@ -633,7 +663,12 @@ input::placeholder {
   letter-spacing: 1px;
 }
 
-.upgrade-requirements ul { list-style: none; padding: 0; margin: 0; }
+.upgrade-requirements ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
 .upgrade-requirements li {
   display: flex;
   align-items: center;
@@ -643,8 +678,15 @@ input::placeholder {
   color: var(--text-main);
 }
 
-.upgrade-requirements .required { color: var(--warning); font-size: 0.8rem; }
-.upgrade-requirements .optional { color: var(--success); font-size: 0.8rem; }
+.upgrade-requirements .required {
+  color: var(--warning);
+  font-size: 0.8rem;
+}
+
+.upgrade-requirements .optional {
+  color: var(--success);
+  font-size: 0.8rem;
+}
 
 
 /* Stage Stats */
@@ -653,7 +695,9 @@ input::placeholder {
   background: rgba(70, 75, 80, 0.3);
 }
 
-.power-stat { margin-bottom: 32px; }
+.power-stat {
+  margin-bottom: 32px;
+}
 
 .stat-header {
   display: flex;
@@ -662,7 +706,12 @@ input::placeholder {
   margin-bottom: 16px;
 }
 
-.stat-header h4 { margin: 0; font-size: 1.3rem; color: var(--text-main); font-weight: 600; }
+.stat-header h4 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: var(--text-main);
+  font-weight: 600;
+}
 
 .gain-badge {
   background: linear-gradient(135deg, #b8c0c8 0%, #d0d8e0 100%);
@@ -689,8 +738,13 @@ input::placeholder {
   letter-spacing: 0.5px;
 }
 
-.bar-label.stock-label { color: #6a8a9a; }
-.bar-label.tuned-label { color: #c0c8d0; }
+.bar-label.stock-label {
+  color: #6a8a9a;
+}
+
+.bar-label.tuned-label {
+  color: #c0c8d0;
+}
 
 .bar-track {
   flex: 1;
@@ -700,6 +754,7 @@ input::placeholder {
   overflow: hidden;
   position: relative;
   border: 1px solid rgba(0, 0, 0, 0.1);
+  margin-left: 30px;
 }
 
 .bar-fill {
@@ -709,7 +764,7 @@ input::placeholder {
   justify-content: flex-end;
   padding-right: 12px;
   transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
+  position: static;
 }
 
 .bar-fill.bar-stock {
@@ -725,8 +780,29 @@ input::placeholder {
   font-size: 0.9rem;
   font-weight: 700;
   color: #fff;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   white-space: nowrap;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@media (max-width: 480px) {
+  .bar-value {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .bar-track {
+    position: relative;
+  }
+
+  .bar-fill {
+    position: static;
+  }
 }
 
 /* Price Box */
@@ -772,7 +848,9 @@ input::placeholder {
   cursor: pointer;
 }
 
-.btn-contact:hover { background: linear-gradient(135deg, #1a9aaa 0%, #0d7a8a 100%); }
+.btn-contact:hover {
+  background: linear-gradient(135deg, #1a9aaa 0%, #0d7a8a 100%);
+}
 
 .btn-shop {
   background: var(--primary);
@@ -790,7 +868,9 @@ input::placeholder {
   cursor: pointer;
 }
 
-.btn-shop:hover { background: #d0d8e0; }
+.btn-shop:hover {
+  background: #d0d8e0;
+}
 
 /* Modern BrandSelector Styles */
 .selector-container {
@@ -991,22 +1071,54 @@ input::placeholder {
 }
 
 @media (max-width: 900px) {
-  .stage-content { grid-template-columns: 1fr; }
-  .stage-description { border-right: none; border-bottom: 1px solid var(--border); padding: 30px; }
-  .stage-stats { padding: 30px; }
-  .stage-tab { padding: 12px 32px; font-size: 1.1rem; }
+  .stage-content {
+    grid-template-columns: 1fr;
+  }
+
+  .stage-description {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 30px;
+  }
+
+  .stage-stats {
+    padding: 30px;
+  }
+
+  .stage-tab {
+    padding: 12px 32px;
+    font-size: 1.1rem;
+  }
 }
 
 @media (max-width: 768px) {
-  .container { padding: 0 16px; }
+  .container {
+    padding: 0 16px;
+  }
+
   h1 {
     font-size: 1.8rem !important;
     line-height: 1.2;
   }
-  h2 { font-size: 1.5rem; }
-  .grid-brands { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
-  .brand-card { padding: 16px; }
-  .btn, .btn-secondary { padding: 12px 20px; font-size: 0.9rem; }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  .grid-brands {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+
+  .brand-card {
+    padding: 16px;
+  }
+
+  .btn,
+  .btn-secondary {
+    padding: 12px 20px;
+    font-size: 0.9rem;
+  }
 
   .selector-container {
     padding: 24px 16px;
@@ -1068,10 +1180,24 @@ input::placeholder {
 }
 
 @media (max-width: 600px) {
-  .stage-description, .stage-stats { padding: 20px; }
-  .stage-header h3 { font-size: 1.5rem; flex-wrap: wrap; }
-  .action-buttons { flex-direction: column; }
-  .breadcrumb { font-size: 0.75rem; }
+
+  .stage-description,
+  .stage-stats {
+    padding: 20px;
+  }
+
+  .stage-header h3 {
+    font-size: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .breadcrumb {
+    font-size: 0.75rem;
+  }
 
   .fuel-buttons {
     flex-direction: column;
@@ -1098,7 +1224,9 @@ input::placeholder {
 }
 
 @media (max-width: 480px) {
-  .grid-brands { grid-template-columns: repeat(2, 1fr); }
+  .grid-brands {
+    grid-template-columns: repeat(2, 1fr);
+  }
 
   h1 {
     font-size: 1.5rem !important;
