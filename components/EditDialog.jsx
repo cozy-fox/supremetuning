@@ -21,6 +21,7 @@ export default function EditDialog({ show, title, value, onConfirm, onCancel, pl
 
   return (
     <div
+      className="dialog-container"
       style={{
         position: 'fixed',
         top: 0,
@@ -38,10 +39,10 @@ export default function EditDialog({ show, title, value, onConfirm, onCancel, pl
       onClick={onCancel}
     >
       <div
+        className="dialog-content dialog-responsive-padding"
         style={{
           background: 'rgba(0,0,0,1)',
           borderRadius: '16px',
-          padding: '32px',
           maxWidth: '500px',
           width: '100%',
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
@@ -51,6 +52,7 @@ export default function EditDialog({ show, title, value, onConfirm, onCancel, pl
       >
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div
+            className="dialog-icon"
             style={{
               background: 'rgba(0, 255, 136, 0.1)',
               borderRadius: '50%',
@@ -79,8 +81,8 @@ export default function EditDialog({ show, title, value, onConfirm, onCancel, pl
               padding: '12px 16px',
               borderRadius: '8px',
               border: '1px solid var(--border)',
-              // background: 'rgba(255, 255, 255, 0.05)',
-              color: 'var(--text)',
+              background: 'rgba(255, 255, 255, 0.05)',
+              color: 'var(--text-main)',
               fontSize: '16px',
               marginBottom: '20px'
             }}

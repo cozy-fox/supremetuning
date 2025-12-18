@@ -13,6 +13,7 @@ export default function ConfirmDialog({ show, message, onConfirm, onCancel, conf
 
   return (
     <div
+      className="dialog-container"
       style={{
         position: 'fixed',
         top: 0,
@@ -30,10 +31,10 @@ export default function ConfirmDialog({ show, message, onConfirm, onCancel, conf
       onClick={onCancel}
     >
       <div
+        className="dialog-content dialog-responsive-padding"
         style={{
           background: 'rgba(0,0,0,1)',
           borderRadius: '16px',
-          padding: '32px',
           maxWidth: '500px',
           width: '100%',
           boxShadow: '0 20px 60px rgba(0, 0, 0, 1)',
@@ -43,6 +44,7 @@ export default function ConfirmDialog({ show, message, onConfirm, onCancel, conf
       >
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div
+            className="dialog-icon"
             style={{
               background: iconBgColor,
               borderRadius: '50%',

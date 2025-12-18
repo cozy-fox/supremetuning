@@ -433,7 +433,7 @@ function StageSection({ stage, stageIndex, vehicleInfo, isStage2, isAdmin, fetch
           </div>
 
           {/* Action Buttons */}
-          <div className="action-buttons">
+          {/* <div className="action-buttons">
             <a href="tel:+31619828216" className="btn-contact">
               <Phone size={18} />
               {t('contact')}
@@ -442,7 +442,7 @@ function StageSection({ stage, stageIndex, vehicleInfo, isStage2, isAdmin, fetch
               <ShoppingBag size={18} />
               {t('shop')}
             </a>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

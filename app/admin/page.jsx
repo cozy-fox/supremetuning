@@ -8,7 +8,7 @@ import { useProgress } from '@/components/ProgressContext';
 import Header from '@/components/Header';
 import {
   Shield, Key, RefreshCw, AlertCircle, Check, ChevronDown, ChevronUp,
-  Trash2, Car, Edit2, Plus, MoveRight
+  Trash2, Car, Edit2, Plus, MoveRight, DollarSign
 } from 'lucide-react';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -16,6 +16,7 @@ import EditDialog from '@/components/EditDialog';
 import AddEngineDialog from '@/components/AddEngineDialog';
 import AddGroupDialog from '@/components/AddGroupDialog';
 import EditGroupDialog from '@/components/EditGroupDialog';
+import BulkUpdateDialog from '@/components/BulkUpdateDialog';
 import BackupSection from '@/components/BackupSection';
 
 export default function AdminPage() {
@@ -60,6 +61,7 @@ export default function AdminPage() {
   const [addEngineDialog, setAddEngineDialog] = useState({ show: false });
   const [addGroupDialog, setAddGroupDialog] = useState({ show: false });
   const [editGroupDialog, setEditGroupDialog] = useState({ show: false, groupData: null });
+  const [bulkUpdateDialog, setBulkUpdateDialog] = useState({ show: false });
 
   // Global operation loading state to prevent multiple simultaneous operations
   const [operationInProgress, setOperationInProgress] = useState(false);
@@ -1261,6 +1263,41 @@ export default function AdminPage() {
     });
   };
 
+  // Bulk update prices
+  const performBulkPriceUpdate = async ({ level, targetId, updateType, priceData }) => {
+    if (operationInProgress) {
+      showToast('Another operation is in progress. Please wait.', 'warning');
+      return;
+    }
+
+    setOperationInProgress(true);
+    startOperation();
+
+    try {
+      const response = await fetchAPI('admin/bulk-price', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level, targetId, updateType, priceData })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update prices');
+      }
+
+      const result = await response.json();
+      showToast(`Updated ${result.updatedCount} stage prices`, 'success');
+      setDataMessage({ type: 'success', text: `Updated ${result.updatedCount} stage prices` });
+    } catch (error) {
+      console.error('Bulk price update failed:', error);
+      showToast('Failed to update prices: ' + error.message, 'error');
+      setDataMessage({ type: 'error', text: 'Failed to update prices: ' + error.message });
+    } finally {
+      setOperationInProgress(false);
+      endOperation();
+    }
+  };
+
   if (isLoading) {
     return (
       <>
@@ -1355,6 +1392,7 @@ export default function AdminPage() {
           handleTypeSelect={handleTypeSelect}
           selectedEngine={selectedEngine}
           handleEngineSelect={handleEngineSelect}
+          openBulkUpdate={() => setBulkUpdateDialog({ show: true })}
         />
 
         {/* Data Editor Section
@@ -1471,6 +1509,18 @@ export default function AdminPage() {
         moveItem={moveItem}
         operationInProgress={operationInProgress}
       />}
+
+      {/* Bulk Update Dialog */}
+      <BulkUpdateDialog
+        show={bulkUpdateDialog.show}
+        onClose={() => setBulkUpdateDialog({ show: false })}
+        onUpdate={performBulkPriceUpdate}
+        brands={brands}
+        groups={groups}
+        models={models}
+        generations={types}
+        engines={engines}
+      />
 
       {/* Global Operation Loading Overlay */}
       {operationInProgress && (
@@ -1911,7 +1961,8 @@ function VisualEditorSection({
   selectedGroup, handleGroupSelect,
   selectedModel, handleModelSelect,
   selectedType, handleTypeSelect,
-  selectedEngine, handleEngineSelect
+  selectedEngine, handleEngineSelect,
+  openBulkUpdate
 }) {
   return (
     <div className="card" style={{ marginBottom: '24px' }}>
@@ -1929,7 +1980,34 @@ function VisualEditorSection({
           <Car size={24} color="#a8b0b8" />
           Data Manager
         </h3>
-        {showVisualEditor ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {showVisualEditor && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openBulkUpdate();
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                background: 'rgba(0, 255, 136, 0.1)',
+                border: '1px solid rgba(0, 255, 136, 0.3)',
+                borderRadius: '6px',
+                color: '#00ff88',
+                fontSize: '0.85rem',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+              title="Bulk update prices"
+            >
+              <DollarSign size={16} />
+              <span className="bulk-btn-text">Bulk Prices</span>
+            </button>
+          )}
+          {showVisualEditor ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+        </div>
       </div>
 
       {showVisualEditor && (

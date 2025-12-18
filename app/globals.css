@@ -1244,3 +1244,260 @@ input::placeholder {
     padding: 0 12px !important;
   }
 }
+
+/* Very small screens - Hamburger menu */
+@media (max-width: 380px) {
+  /* Hide desktop navigation */
+  .header-nav-desktop {
+    display: none !important;
+  }
+
+  /* Show hamburger menu */
+  .header-hamburger {
+    display: block !important;
+  }
+
+  /* Smaller header */
+  header {
+    padding: 8px 12px !important;
+  }
+
+  header img {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  /* Hide logo text on very small screens */
+  .header-logo-text {
+    display: none;
+  }
+
+  h1 {
+    font-size: 1.3rem !important;
+  }
+
+  .container {
+    padding: 0 8px !important;
+  }
+
+  /* Smaller cards */
+  .card {
+    padding: 16px;
+  }
+
+  .brand-card {
+    padding: 12px;
+  }
+
+  /* Smaller buttons */
+  .btn,
+  .btn-secondary {
+    padding: 10px 16px !important;
+    font-size: 0.8rem !important;
+  }
+
+  /* Stage tabs */
+  .stage-tab {
+    padding: 10px 16px !important;
+    font-size: 0.9rem !important;
+  }
+
+  /* Stage section */
+  .stage-description,
+  .stage-stats {
+    padding: 16px !important;
+  }
+
+  .stage-header h3 {
+    font-size: 1.3rem !important;
+  }
+
+  /* Bar labels */
+  .bar-label {
+    width: 50px;
+    font-size: 0.75rem;
+  }
+
+  .bar-track {
+    margin-left: 15px;
+  }
+
+  /* Selector container */
+  .selector-container {
+    padding: 16px 12px;
+  }
+
+  .selector-select {
+    padding: 12px 14px;
+    font-size: 0.85rem;
+  }
+
+  /* Search button */
+  .btn-search-modern {
+    padding: 14px 24px !important;
+    font-size: 0.95rem !important;
+  }
+
+  /* Group buttons */
+  .group-buttons {
+    gap: 8px !important;
+  }
+
+  .group-buttons button {
+    padding: 10px 16px !important;
+    font-size: 0.9rem !important;
+    min-width: auto !important;
+  }
+}
+
+/* Default: Hide hamburger, show desktop nav */
+.header-hamburger {
+  display: none;
+  position: relative;
+}
+
+/* Show hamburger only on very small screens */
+@media (min-width: 381px) {
+  .header-hamburger {
+    display: none !important;
+  }
+
+  .header-nav-desktop {
+    display: flex !important;
+  }
+}
+
+/* Dialog responsive styles for small screens */
+@media (max-width: 380px) {
+  /* Bulk button text hide on very small screens */
+  .bulk-btn-text {
+    display: none;
+  }
+
+  /* All dialogs - smaller padding and sizing */
+  .dialog-container {
+    padding: 10px !important;
+  }
+
+  .dialog-content {
+    padding: 20px !important;
+    border-radius: 12px !important;
+    max-width: calc(100vw - 20px) !important;
+    margin: 10px !important;
+  }
+
+  .dialog-content h3 {
+    font-size: 1.1rem !important;
+  }
+
+  .dialog-content input,
+  .dialog-content select,
+  .dialog-content textarea {
+    padding: 10px 12px !important;
+    font-size: 14px !important;
+  }
+
+  .dialog-content label {
+    font-size: 0.8rem !important;
+  }
+
+  .dialog-content .btn {
+    padding: 10px 16px !important;
+    font-size: 0.85rem !important;
+  }
+
+  /* Icon container */
+  .dialog-icon {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .dialog-icon svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  /* Grid columns for small forms */
+  .dialog-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dialog-grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dialog-grid-4 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Stage checkboxes */
+  .dialog-stages-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+
+  /* Logo selection grid */
+  .dialog-logo-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .dialog-logo-grid > div {
+    padding: 12px !important;
+  }
+
+  /* Admin edit form in stage section */
+  .stage-stats {
+    padding: 16px !important;
+  }
+
+  .stage-stats input[type="text"],
+  .stage-stats input[type="number"] {
+    padding: 8px 10px !important;
+    font-size: 14px !important;
+  }
+
+  .stage-stats label {
+    font-size: 0.75rem !important;
+  }
+
+  /* Power stat in edit mode */
+  .power-stat {
+    margin-bottom: 20px !important;
+  }
+
+  .stat-header h4 {
+    font-size: 1rem !important;
+  }
+
+  .gain-badge {
+    padding: 4px 10px !important;
+    font-size: 0.8rem !important;
+  }
+
+  /* Price box */
+  .price-box {
+    padding: 12px !important;
+  }
+
+  .price-row .price-value {
+    font-size: 1.2rem !important;
+  }
+}
+
+/* Additional dialog utility classes */
+.dialog-responsive-padding {
+  padding: 32px;
+}
+
+@media (max-width: 480px) {
+  .dialog-responsive-padding {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 380px) {
+  .dialog-responsive-padding {
+    padding: 16px;
+  }
+}
