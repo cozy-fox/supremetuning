@@ -1274,18 +1274,12 @@ export default function AdminPage() {
     startOperation();
 
     try {
-      const response = await fetchAPI('admin/bulk-price', {
+      const result = await fetchAPI('admin/bulk-price', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        isProtected: true,
         body: JSON.stringify({ level, targetId, updateType, priceData })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update prices');
-      }
-
-      const result = await response.json();
       showToast(`Updated ${result.updatedCount} stage prices`, 'success');
       setDataMessage({ type: 'success', text: `Updated ${result.updatedCount} stage prices` });
     } catch (error) {
