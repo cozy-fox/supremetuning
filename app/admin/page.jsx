@@ -8,7 +8,7 @@ import { useProgress } from '@/components/ProgressContext';
 import Header from '@/components/Header';
 import {
   Shield, Key, RefreshCw, AlertCircle, Check, ChevronDown, ChevronUp,
-  Trash2, Car, Edit2, Plus, MoveRight, DollarSign
+  Trash2, Car, Edit2, Plus, MoveRight, DollarSign, Eye, EyeOff
 } from 'lucide-react';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -2616,6 +2616,10 @@ function CredentialsSection({
   confirmPassword, setConfirmPassword,
   credsSaving, credsMessage, updateCredentials
 }) {
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   return (
     <div className="card">
       <div
@@ -2639,12 +2643,38 @@ function CredentialsSection({
         <form onSubmit={updateCredentials} style={{ marginTop: '20px' }}>
           <div style={{ marginBottom: '16px' }}>
             <label>{t('currentPassword')}</label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              required
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showCurrentPassword ? 'text' : 'password'}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                style={{ paddingRight: '48px', marginBottom: 0 }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-muted)',
+                  transition: 'color 0.2s ease'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                onMouseOut={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+              >
+                {showCurrentPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           <div style={{ marginBottom: '16px' }}>
@@ -2660,23 +2690,75 @@ function CredentialsSection({
 
           <div style={{ marginBottom: '16px' }}>
             <label>{t('newPassword')}</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              minLength={6}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showNewPassword ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={6}
+                style={{ paddingRight: '48px', marginBottom: 0 }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-muted)',
+                  transition: 'color 0.2s ease'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                onMouseOut={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+              >
+                {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           <div style={{ marginBottom: '20px' }}>
             <label>{t('confirmNewPassword')}</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                style={{ paddingRight: '48px', marginBottom: 0 }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-muted)',
+                  transition: 'color 0.2s ease'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                onMouseOut={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+              >
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           {credsMessage.text && (

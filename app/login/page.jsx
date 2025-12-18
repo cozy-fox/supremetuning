@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthContext';
 import { useLanguage } from '@/components/LanguageContext';
 import Header from '@/components/Header';
-import { Shield, User, Lock } from 'lucide-react';
+import { Shield, User, Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -77,13 +78,39 @@ export default function LoginPage() {
 
             <div style={{ marginBottom: '24px' }}>
               <label><Lock size={14} style={{ marginRight: '8px' }} />{t('password')}</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={t('password')}
-                required
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={t('password')}
+                  required
+                  style={{ paddingRight: '48px', marginBottom: 0 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--text-muted)',
+                    transition: 'color 0.2s ease'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                  onMouseOut={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
 
             {error && (
