@@ -14,8 +14,9 @@ export async function POST(request) {
     const { currentPassword, newUsername, newPassword } = await request.json();
 
     // Validate current password
-    const currentUsername = getCurrentUsername();
-    if (!validateCredentials(currentUsername, currentPassword)) {
+    const currentUsername = await getCurrentUsername();
+    const isValid = await validateCredentials(currentUsername, currentPassword);
+    if (!isValid) {
       return NextResponse.json(
         { message: 'Current password is incorrect' },
         { status: 401 }
@@ -39,9 +40,9 @@ export async function POST(request) {
 
     // Hash new password and save
     const hashedPassword = hashPassword(newPassword);
-    saveAdminCredentials(newUsername, hashedPassword);
+    await saveAdminCredentials(newUsername, hashedPassword);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Credentials updated successfully',
       username: newUsername
     });

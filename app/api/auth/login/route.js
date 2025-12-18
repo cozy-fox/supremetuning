@@ -5,7 +5,8 @@ export async function POST(request) {
   try {
     const { username, password } = await request.json();
 
-    if (!validateCredentials(username, password)) {
+    const isValid = await validateCredentials(username, password);
+    if (!isValid) {
       return NextResponse.json(
         { message: 'Invalid credentials' },
         { status: 401 }
