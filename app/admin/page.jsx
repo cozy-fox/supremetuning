@@ -1691,10 +1691,9 @@ function MoveDialog({ moveDialog, setMoveDialog, moveItem, operationInProgress }
         zIndex: 1000,
         pointerEvents: isDisabled ? 'none' : 'auto'
       }}>
-        <div style={{
+        <div className="dialog-content dialog-responsive-padding" style={{
           background: 'black',
           borderRadius: '12px',
-          padding: '28px',
           maxWidth: '600px',
           width: '90%',
           border: '1px solid var(--border)',
@@ -2036,7 +2035,7 @@ function VisualEditorSection({
               <p>{t('loadingBrands') || 'Loading brands...'}</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+            <div className="admin-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '16px' }}>
               {/* Brands List */}
               <div style={{ background: 'rgba(50, 55, 60, 0.3)', borderRadius: '8px', padding: '16px' }}>
                 <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', color: 'var(--primary)' }}>

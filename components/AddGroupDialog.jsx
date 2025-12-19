@@ -145,10 +145,10 @@ export default function AddGroupDialog({ show, onConfirm, onCancel, brandName })
       onClick={onCancel}
     >
       <div
+        className="dialog-content dialog-responsive-padding"
         style={{
           background: 'rgba(0,0,0,1)',
           borderRadius: '16px',
-          padding: '32px',
           maxWidth: '600px',
           width: '100%',
           maxHeight: '90vh',

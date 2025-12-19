@@ -86,10 +86,10 @@ export default function AddEngineDialog({ show, onConfirm, onCancel, brandName }
       onClick={onCancel}
     >
       <div
+        className="dialog-content dialog-responsive-padding"
         style={{
           background: '#1a1a1a',
           borderRadius: '16px',
-          padding: '32px',
           maxWidth: '600px',
           width: '100%',
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',

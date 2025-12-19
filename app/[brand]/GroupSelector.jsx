@@ -142,7 +142,7 @@ export default function GroupSelector({ brand, groups, models, brandGroups }) {
         {/* Group Cards Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
           gap: '40px',
           padding: '20px'
         }}>
@@ -150,6 +150,7 @@ export default function GroupSelector({ brand, groups, models, brandGroups }) {
             <button
               key={group.id}
               onClick={() => handleGroupSelect(group)}
+              className="group-card-selector"
               style={{
                 background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
                 border: '2px solid #333',

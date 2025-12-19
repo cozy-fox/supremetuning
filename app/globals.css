@@ -1243,6 +1243,21 @@ input::placeholder {
   .container {
     padding: 0 12px !important;
   }
+
+  /* Group selector cards - smaller padding and sizing */
+  .group-card-selector {
+    padding: 40px 24px !important;
+    gap: 20px !important;
+    min-height: 280px !important;
+  }
+
+  .group-card-selector h2 {
+    font-size: 1.5rem !important;
+  }
+
+  .group-card-selector p {
+    font-size: 0.9rem !important;
+  }
 }
 
 /* Very small screens - Hamburger menu */
@@ -1289,11 +1304,47 @@ input::placeholder {
     padding: 12px;
   }
 
+  /* Group selector cards - even smaller for very small screens */
+  .group-card-selector {
+    padding: 30px 16px !important;
+    gap: 16px !important;
+    min-height: 240px !important;
+    border-radius: 12px !important;
+  }
+
+  .group-card-selector h2 {
+    font-size: 1.3rem !important;
+  }
+
+  .group-card-selector p {
+    font-size: 0.85rem !important;
+  }
+
+  /* Logo container in group cards */
+  .group-card-selector > div:first-of-type {
+    width: 220px !important;
+    height: 120px !important;
+    padding: 12px !important;
+  }
+
   /* Smaller buttons */
   .btn,
   .btn-secondary {
     padding: 10px 16px !important;
     font-size: 0.8rem !important;
+  }
+
+  /* Group buttons - even smaller */
+  .group-buttons {
+    gap: 6px !important;
+    padding: 4px !important;
+  }
+
+  .group-buttons button {
+    padding: 8px 12px !important;
+    font-size: 0.8rem !important;
+    min-width: auto !important;
+    letter-spacing: 0.3px !important;
   }
 
   /* Stage tabs */
@@ -1310,6 +1361,17 @@ input::placeholder {
 
   .stage-header h3 {
     font-size: 1.3rem !important;
+  }
+
+  /* Stage card - smaller padding */
+  .stage-card {
+    padding: 16px !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* Power bars - smaller height */
+  .power-bar-container {
+    height: 28px !important;
   }
 
   /* Bar labels */
@@ -1483,6 +1545,20 @@ input::placeholder {
   .price-row .price-value {
     font-size: 1.2rem !important;
   }
+
+  /* Admin grid - single column on very small screens */
+  .admin-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .admin-grid > div {
+    padding: 12px !important;
+  }
+
+  .admin-grid h4 {
+    font-size: 0.85rem !important;
+  }
 }
 
 /* Additional dialog utility classes */
@@ -1499,5 +1575,76 @@ input::placeholder {
 @media (max-width: 380px) {
   .dialog-responsive-padding {
     padding: 16px;
+  }
+}
+
+/* Extra small screens - additional responsive utilities */
+@media (max-width: 400px) {
+  /* Ensure all text is readable */
+  body {
+    font-size: 15px;
+  }
+
+  /* Smaller headings */
+  h1 {
+    font-size: 1.4rem !important;
+  }
+
+  h2 {
+    font-size: 1.2rem !important;
+  }
+
+  h3 {
+    font-size: 1rem !important;
+  }
+
+  /* Tighter spacing */
+  .container {
+    padding: 0 10px !important;
+  }
+
+  .card {
+    padding: 14px !important;
+    margin-bottom: 14px !important;
+  }
+
+  /* Smaller gaps in flex/grid layouts */
+  .flex-between,
+  .flex-center {
+    gap: 8px !important;
+  }
+
+  /* Ensure buttons don't overflow */
+  .btn,
+  .btn-secondary {
+    padding: 8px 14px !important;
+    font-size: 0.75rem !important;
+    white-space: nowrap;
+  }
+
+  /* Selector items - full width */
+  .selector-item {
+    min-width: 100% !important;
+  }
+
+  .selector-select {
+    font-size: 0.8rem !important;
+    padding: 10px 12px !important;
+  }
+
+  /* Breadcrumb - smaller text */
+  .breadcrumb {
+    font-size: 0.75rem !important;
+    gap: 4px !important;
+  }
+
+  /* Stage tabs - smaller */
+  .stage-tabs {
+    gap: 6px !important;
+  }
+
+  .stage-tab {
+    padding: 8px 12px !important;
+    font-size: 0.8rem !important;
   }
 }
