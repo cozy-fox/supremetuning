@@ -2120,6 +2120,7 @@ function VisualEditorSection({
                       title={t('addNewGroup') || 'Add new group'}
                     >
                       + {t('addGroup') || 'Add Group'}
+                    </button>
                   </div>
                   {groupsLoading ? (
                     <div style={{ textAlign: 'center', padding: '20px' }}>
