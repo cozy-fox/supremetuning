@@ -12,7 +12,8 @@ export default function StagePlusPricingDialog({
   groups = [],
   models = [],
   generations = [],
-  engines = []
+  engines = [],
+  dataLoading = false
 }) {
   const [applyMode, setApplyMode] = useState('all'); // 'all' or 'selection'
   const [level, setLevel] = useState('brand');
@@ -33,7 +34,7 @@ export default function StagePlusPricingDialog({
     if (show) {
       setApplyMode('all');
       setLevel('brand');
-      setSelectedBrand(brands[0]?.id || '');
+      setSelectedBrand('');
       setSelectedGroup('');
       setSelectedModel('');
       setSelectedGeneration('');
@@ -282,7 +283,6 @@ export default function StagePlusPricingDialog({
                 type="button"
                 onClick={() => {
                   setApplyMode('selection');
-                  setSelectedBrand(brands[0]?.id || '');
                 }}
                 style={{
                   padding: '10px 8px',
@@ -332,6 +332,26 @@ export default function StagePlusPricingDialog({
           {/* Hierarchical Selectors - Only show if SELECTION mode */}
           {applyMode === 'selection' && (
             <>
+              {/* Loading Overlay for Data */}
+              {dataLoading && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  padding: '20px',
+                  background: 'rgba(0, 170, 255, 0.05)',
+                  borderRadius: '8px',
+                  marginBottom: '16px',
+                  border: '1px solid rgba(0, 170, 255, 0.2)'
+                }}>
+                  <Loader2 size={20} color="#00aaff" style={{ animation: 'spin 1s linear infinite' }} />
+                  <span style={{ color: '#00aaff', fontSize: '0.9rem' }}>
+                    {t('loadingData') || 'Loading data...'}
+                  </span>
+                </div>
+              )}
+
               <div style={{ marginBottom: '16px' }}>
                 <label style={labelStyle}>{t('brand') || 'Brand'}</label>
                 <select
@@ -344,6 +364,7 @@ export default function StagePlusPricingDialog({
                     setSelectedEngine('');
                   }}
                   style={selectStyle}
+                  disabled={dataLoading}
                 >
                   <option value="">{t('selectBrand') || '-- Select Brand --'}</option>
                   {brands.map(b => (
@@ -356,21 +377,34 @@ export default function StagePlusPricingDialog({
               {selectedBrand && (
                 <div style={{ marginBottom: '16px' }}>
                   <label style={labelStyle}>{t('groupOptionalFilter') || 'Group (Optional Filter)'}</label>
-                  <select
-                    value={selectedGroup}
-                    onChange={(e) => {
-                      setSelectedGroup(e.target.value);
-                      setSelectedModel('');
-                      setSelectedGeneration('');
-                      setSelectedEngine('');
-                    }}
-                    style={selectStyle}
-                  >
-                    <option value="">{t('allGroups') || 'All Groups'}</option>
-                    {filteredGroups.map(g => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
-                    ))}
-                  </select>
+                  {dataLoading ? (
+                    <div style={{
+                      ...selectStyle,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      color: 'var(--text-secondary)'
+                    }}>
+                      <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                      {t('loadingGroups') || 'Loading groups...'}
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedGroup}
+                      onChange={(e) => {
+                        setSelectedGroup(e.target.value);
+                        setSelectedModel('');
+                        setSelectedGeneration('');
+                        setSelectedEngine('');
+                      }}
+                      style={selectStyle}
+                    >
+                      <option value="">{t('allGroups') || 'All Groups'}</option>
+                      {filteredGroups.map(g => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
 
@@ -378,21 +412,34 @@ export default function StagePlusPricingDialog({
               {(level === 'model' || level === 'generation' || level === 'engine') && (
                 <div style={{ marginBottom: '16px' }}>
                   <label style={labelStyle}>{t('model') || 'Model'} *</label>
-                  <select
-                    value={selectedModel}
-                    onChange={(e) => {
-                      setSelectedModel(e.target.value);
-                      setSelectedGeneration('');
-                      setSelectedEngine('');
-                    }}
-                    style={selectStyle}
-                    required
-                  >
-                    <option value="">{t('selectModel') || '-- Select Model --'}</option>
-                    {filteredModels.map(m => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
+                  {dataLoading ? (
+                    <div style={{
+                      ...selectStyle,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      color: 'var(--text-secondary)'
+                    }}>
+                      <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                      {t('loadingModels') || 'Loading models...'}
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedModel}
+                      onChange={(e) => {
+                        setSelectedModel(e.target.value);
+                        setSelectedGeneration('');
+                        setSelectedEngine('');
+                      }}
+                      style={selectStyle}
+                      required
+                    >
+                      <option value="">{t('selectModel') || '-- Select Model --'}</option>
+                      {filteredModels.map(m => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
 
@@ -400,21 +447,34 @@ export default function StagePlusPricingDialog({
               {(level === 'generation' || level === 'engine') && (
                 <div style={{ marginBottom: '16px' }}>
                   <label style={labelStyle}>{t('generation') || 'Generation'} *</label>
-                  <select
-                    value={selectedGeneration}
-                    onChange={(e) => {
-                      setSelectedGeneration(e.target.value);
-                      setSelectedEngine('');
-                    }}
-                    style={selectStyle}
-                    required
-                    disabled={!selectedModel}
-                  >
-                    <option value="">{selectedModel ? (t('selectGeneration') || '-- Select Generation --') : (t('selectModelFirst') || '-- Select Model First --')}</option>
-                    {filteredGenerations.map(g => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
-                    ))}
-                  </select>
+                  {dataLoading ? (
+                    <div style={{
+                      ...selectStyle,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      color: 'var(--text-secondary)'
+                    }}>
+                      <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                      {t('loadingGenerations') || 'Loading generations...'}
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedGeneration}
+                      onChange={(e) => {
+                        setSelectedGeneration(e.target.value);
+                        setSelectedEngine('');
+                      }}
+                      style={selectStyle}
+                      required
+                      disabled={!selectedModel}
+                    >
+                      <option value="">{selectedModel ? (t('selectGeneration') || '-- Select Generation --') : (t('selectModelFirst') || '-- Select Model First --')}</option>
+                      {filteredGenerations.map(g => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
 
@@ -422,18 +482,31 @@ export default function StagePlusPricingDialog({
               {level === 'engine' && (
                 <div style={{ marginBottom: '16px' }}>
                   <label style={labelStyle}>{t('engine') || 'Engine'} *</label>
-                  <select
-                    value={selectedEngine}
-                    onChange={(e) => setSelectedEngine(e.target.value)}
-                    style={selectStyle}
-                    required
-                    disabled={!selectedGeneration}
-                  >
-                    <option value="">{selectedGeneration ? (t('selectEngine') || '-- Select Engine --') : (t('selectGenerationFirst') || '-- Select Generation First --')}</option>
-                    {filteredEngines.map(e => (
-                      <option key={e.id} value={e.id}>{e.name}</option>
-                    ))}
-                  </select>
+                  {dataLoading ? (
+                    <div style={{
+                      ...selectStyle,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      color: 'var(--text-secondary)'
+                    }}>
+                      <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                      {t('loadingEngines') || 'Loading engines...'}
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedEngine}
+                      onChange={(e) => setSelectedEngine(e.target.value)}
+                      style={selectStyle}
+                      required
+                      disabled={!selectedGeneration}
+                    >
+                      <option value="">{selectedGeneration ? (t('selectEngine') || '-- Select Engine --') : (t('selectGenerationFirst') || '-- Select Generation First --')}</option>
+                      {filteredEngines.map(e => (
+                        <option key={e.id} value={e.id}>{e.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
             </>

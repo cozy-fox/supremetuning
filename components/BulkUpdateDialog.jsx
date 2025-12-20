@@ -5,8 +5,8 @@ import { DollarSign, ChevronDown, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/components/LanguageContext';
 
 export default function BulkUpdateDialog({
-  show, 
-  onClose, 
+  show,
+  onClose,
   onUpdate,
   brands = [],
   groups = [],
@@ -14,7 +14,8 @@ export default function BulkUpdateDialog({
   generations = [],
   engines = [],
   initialLevel = 'brand',
-  initialTargetId = null
+  initialTargetId = null,
+  dataLoading = false
 }) {
   const [level, setLevel] = useState(initialLevel);
   const [selectedBrand, setSelectedBrand] = useState(initialTargetId || '');
@@ -44,7 +45,7 @@ export default function BulkUpdateDialog({
   useEffect(() => {
     if (show) {
       setLevel(initialLevel);
-      setSelectedBrand(initialTargetId || (brands[0]?.id || ''));
+      setSelectedBrand(initialTargetId || '');
       setSelectedGroup('');
       setSelectedModel('');
       setSelectedGeneration('');
@@ -294,6 +295,26 @@ export default function BulkUpdateDialog({
             </div>
           </div>
 
+          {/* Loading Overlay for Data */}
+          {dataLoading && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              padding: '20px',
+              background: 'rgba(0, 170, 255, 0.05)',
+              borderRadius: '8px',
+              marginBottom: '16px',
+              border: '1px solid rgba(0, 170, 255, 0.2)'
+            }}>
+              <Loader2 size={20} color="#00aaff" style={{ animation: 'spin 1s linear infinite' }} />
+              <span style={{ color: '#00aaff', fontSize: '0.9rem' }}>
+                {t('loadingData') || 'Loading data...'}
+              </span>
+            </div>
+          )}
+
           {/* Hierarchical Selectors */}
           <div style={{ marginBottom: '16px' }}>
             <label style={labelStyle}>{t('brand') || 'Brand'}</label>
@@ -307,6 +328,7 @@ export default function BulkUpdateDialog({
                 setSelectedEngine('');
               }}
               style={selectStyle}
+              disabled={dataLoading}
             >
               <option value="">{t('selectBrand') || '-- Select Brand --'}</option>
               {brands.map(b => (
@@ -319,21 +341,34 @@ export default function BulkUpdateDialog({
           {selectedBrand && (
             <div style={{ marginBottom: '16px' }}>
               <label style={labelStyle}>{t('groupOptionalFilter') || 'Group (Optional Filter)'}</label>
-              <select
-                value={selectedGroup}
-                onChange={(e) => {
-                  setSelectedGroup(e.target.value);
-                  setSelectedModel('');
-                  setSelectedGeneration('');
-                  setSelectedEngine('');
-                }}
-                style={selectStyle}
-              >
-                <option value="">{t('allGroups') || 'All Groups'}</option>
-                {filteredGroups.map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
+              {dataLoading ? (
+                <div style={{
+                  ...selectStyle,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: 'var(--text-secondary)'
+                }}>
+                  <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  {t('loadingGroups') || 'Loading groups...'}
+                </div>
+              ) : (
+                <select
+                  value={selectedGroup}
+                  onChange={(e) => {
+                    setSelectedGroup(e.target.value);
+                    setSelectedModel('');
+                    setSelectedGeneration('');
+                    setSelectedEngine('');
+                  }}
+                  style={selectStyle}
+                >
+                  <option value="">{t('allGroups') || 'All Groups'}</option>
+                  {filteredGroups.map(g => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              )}
             </div>
           )}
 
@@ -341,21 +376,34 @@ export default function BulkUpdateDialog({
           {(level === 'model' || level === 'generation' || level === 'engine') && (
             <div style={{ marginBottom: '16px' }}>
               <label style={labelStyle}>{t('model') || 'Model'} *</label>
-              <select
-                value={selectedModel}
-                onChange={(e) => {
-                  setSelectedModel(e.target.value);
-                  setSelectedGeneration('');
-                  setSelectedEngine('');
-                }}
-                style={selectStyle}
-                required
-              >
-                <option value="">{t('selectModel') || '-- Select Model --'}</option>
-                {filteredModels.map(m => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-              </select>
+              {dataLoading ? (
+                <div style={{
+                  ...selectStyle,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: 'var(--text-secondary)'
+                }}>
+                  <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  {t('loadingModels') || 'Loading models...'}
+                </div>
+              ) : (
+                <select
+                  value={selectedModel}
+                  onChange={(e) => {
+                    setSelectedModel(e.target.value);
+                    setSelectedGeneration('');
+                    setSelectedEngine('');
+                  }}
+                  style={selectStyle}
+                  required
+                >
+                  <option value="">{t('selectModel') || '-- Select Model --'}</option>
+                  {filteredModels.map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+              )}
             </div>
           )}
 
@@ -363,21 +411,34 @@ export default function BulkUpdateDialog({
           {(level === 'generation' || level === 'engine') && (
             <div style={{ marginBottom: '16px' }}>
               <label style={labelStyle}>{t('generation') || 'Generation'} *</label>
-              <select
-                value={selectedGeneration}
-                onChange={(e) => {
-                  setSelectedGeneration(e.target.value);
-                  setSelectedEngine('');
-                }}
-                style={selectStyle}
-                required
-                disabled={!selectedModel}
-              >
-                <option value="">{selectedModel ? (t('selectGeneration') || '-- Select Generation --') : (t('selectModelFirst') || '-- Select Model First --')}</option>
-                {filteredGenerations.map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
+              {dataLoading ? (
+                <div style={{
+                  ...selectStyle,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: 'var(--text-secondary)'
+                }}>
+                  <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  {t('loadingGenerations') || 'Loading generations...'}
+                </div>
+              ) : (
+                <select
+                  value={selectedGeneration}
+                  onChange={(e) => {
+                    setSelectedGeneration(e.target.value);
+                    setSelectedEngine('');
+                  }}
+                  style={selectStyle}
+                  required
+                  disabled={!selectedModel}
+                >
+                  <option value="">{selectedModel ? (t('selectGeneration') || '-- Select Generation --') : (t('selectModelFirst') || '-- Select Model First --')}</option>
+                  {filteredGenerations.map(g => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              )}
             </div>
           )}
 
@@ -385,18 +446,31 @@ export default function BulkUpdateDialog({
           {level === 'engine' && (
             <div style={{ marginBottom: '16px' }}>
               <label style={labelStyle}>{t('engine') || 'Engine'} *</label>
-              <select
-                value={selectedEngine}
-                onChange={(e) => setSelectedEngine(e.target.value)}
-                style={selectStyle}
-                required
-                disabled={!selectedGeneration}
-              >
-                <option value="">{selectedGeneration ? (t('selectEngine') || '-- Select Engine --') : (t('selectGenerationFirst') || '-- Select Generation First --')}</option>
-                {filteredEngines.map(e => (
-                  <option key={e.id} value={e.id}>{e.name}</option>
-                ))}
-              </select>
+              {dataLoading ? (
+                <div style={{
+                  ...selectStyle,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: 'var(--text-secondary)'
+                }}>
+                  <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  {t('loadingEngines') || 'Loading engines...'}
+                </div>
+              ) : (
+                <select
+                  value={selectedEngine}
+                  onChange={(e) => setSelectedEngine(e.target.value)}
+                  style={selectStyle}
+                  required
+                  disabled={!selectedGeneration}
+                >
+                  <option value="">{selectedGeneration ? (t('selectEngine') || '-- Select Engine --') : (t('selectGenerationFirst') || '-- Select Generation First --')}</option>
+                  {filteredEngines.map(e => (
+                    <option key={e.id} value={e.id}>{e.name}</option>
+                  ))}
+                </select>
+              )}
             </div>
           )}
 

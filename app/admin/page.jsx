@@ -71,6 +71,7 @@ export default function AdminPage() {
   const [allModels, setAllModels] = useState([]);
   const [allTypes, setAllTypes] = useState([]);
   const [allEngines, setAllEngines] = useState([]);
+  const [bulkDataLoading, setBulkDataLoading] = useState(false);
 
   // Global operation loading state to prevent multiple simultaneous operations
   const [operationInProgress, setOperationInProgress] = useState(false);
@@ -1274,6 +1275,7 @@ export default function AdminPage() {
 
   // Load all data for bulk update dialog
   const loadAllDataForBulkUpdate = async () => {
+    setBulkDataLoading(true);
     try {
       const [groupsRes, modelsRes, typesRes, enginesRes] = await Promise.all([
         fetch('/api/groups'),
@@ -1296,6 +1298,8 @@ export default function AdminPage() {
     } catch (error) {
       console.error('Failed to load data for bulk update:', error);
       showToast('Failed to load data', 'error');
+    } finally {
+      setBulkDataLoading(false);
     }
   };
 
@@ -1613,6 +1617,7 @@ export default function AdminPage() {
         models={allModels}
         generations={allTypes}
         engines={allEngines}
+        dataLoading={bulkDataLoading}
       />
 
       {/* Stage+ Pricing Dialog */}
@@ -1622,6 +1627,7 @@ export default function AdminPage() {
         onApply={applyStagePlusPricing}
         brands={brands}
         groups={allGroups}
+        dataLoading={bulkDataLoading}
         models={allModels}
         generations={allTypes}
         engines={allEngines}
