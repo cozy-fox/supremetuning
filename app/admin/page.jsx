@@ -9,7 +9,7 @@ import Header from '@/components/Header';
 import {
   Shield, Key, RefreshCw, AlertCircle, Check, ChevronDown, ChevronUp,
   Trash2, Car, Edit2, Plus, MoveRight, DollarSign, Eye, EyeOff, Percent,
-  Settings, Database
+  Settings, Database,
 } from 'lucide-react';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -2216,7 +2216,7 @@ function VisualEditorSection({
                     onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 255, 136, 0.1)'}
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
-                    <DollarSign size={18} />
+                    <RefreshCw size={18} />
                     <span>{t('bulkUpdate') || 'Bulk Update'}</span>
                   </button>
                   <button
