@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Percent, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/components/LanguageContext';
 
@@ -27,7 +27,67 @@ export default function StagePlusPricingDialog({
   const [stage2PlusPercentage, setStage2PlusPercentage] = useState('15');
   const [isApplying, setIsApplying] = useState(false);
 
+  // Real price preview state
+  const [previewPrices, setPreviewPrices] = useState({ stage1Price: null, stage2Price: null, hasData: false, sampleInfo: {} });
+  const [loadingPreview, setLoadingPreview] = useState(false);
+
   const { t } = useLanguage();
+
+  // Fetch real preview prices from API
+  const fetchPreviewPrices = useCallback(async () => {
+    setLoadingPreview(true);
+    try {
+      const params = new URLSearchParams();
+
+      if (applyMode === 'all') {
+        params.set('level', 'all');
+      } else {
+        params.set('level', level);
+
+        // Set targetId based on level
+        if (level === 'brand' && selectedBrand) {
+          params.set('targetId', selectedBrand);
+          if (selectedGroup) params.set('groupId', selectedGroup);
+        } else if (level === 'model' && selectedModel) {
+          params.set('targetId', selectedModel);
+        } else if (level === 'generation' && selectedGeneration) {
+          params.set('targetId', selectedGeneration);
+        } else if (level === 'engine' && selectedEngine) {
+          params.set('targetId', selectedEngine);
+        }
+      }
+
+      const response = await fetch(`/api/admin/stage-plus-pricing?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setPreviewPrices(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch preview prices:', error);
+    } finally {
+      setLoadingPreview(false);
+    }
+  }, [applyMode, level, selectedBrand, selectedGroup, selectedModel, selectedGeneration, selectedEngine]);
+
+  // Fetch preview prices when selections change
+  useEffect(() => {
+    if (show) {
+      // Only fetch if we have enough data
+      if (applyMode === 'all') {
+        fetchPreviewPrices();
+      } else if (applyMode === 'selection') {
+        if (level === 'brand' && selectedBrand) {
+          fetchPreviewPrices();
+        } else if (level === 'model' && selectedModel) {
+          fetchPreviewPrices();
+        } else if (level === 'generation' && selectedGeneration) {
+          fetchPreviewPrices();
+        } else if (level === 'engine' && selectedEngine) {
+          fetchPreviewPrices();
+        }
+      }
+    }
+  }, [show, applyMode, level, selectedBrand, selectedGroup, selectedModel, selectedGeneration, selectedEngine, fetchPreviewPrices]);
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -41,6 +101,7 @@ export default function StagePlusPricingDialog({
       setSelectedEngine('');
       setStage1PlusPercentage('15');
       setStage2PlusPercentage('15');
+      setPreviewPrices({ stage1Price: null, stage2Price: null, hasData: false, sampleInfo: {} });
     }
   }, [show, brands]);
 
@@ -548,7 +609,7 @@ export default function StagePlusPricingDialog({
             </p>
           </div>
 
-          {/* Price Preview */}
+          {/* Price Preview - Real Prices */}
           {stage1PlusPercentage && stage2PlusPercentage && !isNaN(parseFloat(stage1PlusPercentage)) && !isNaN(parseFloat(stage2PlusPercentage)) && (
             <div style={{
               marginBottom: '16px',
@@ -558,22 +619,57 @@ export default function StagePlusPricingDialog({
               border: '1px solid rgba(0, 170, 255, 0.2)'
             }}>
               <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
-                {t('pricePreview') || 'Price Preview Example:'}
+                {t('realPricePreview') || 'Real Price Preview:'}
+                {previewPrices.sampleInfo?.engineName && (
+                  <span style={{ fontWeight: '400', marginLeft: '8px', color: 'var(--text-tertiary)' }}>
+                    ({previewPrices.sampleInfo.engineName})
+                  </span>
+                )}
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
-                <div>
-                  <div style={{ color: 'var(--text-secondary)' }}>Stage 1: €600</div>
-                  <div style={{ color: '#00aaff', fontWeight: '500' }}>
-                    Stage 1+: €{Math.round(600 * (1 + parseFloat(stage1PlusPercentage) / 100))}
+
+              {loadingPreview ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
+                  <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  {t('loadingPreview') || 'Loading prices...'}
+                </div>
+              ) : previewPrices.hasData ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
+                  {previewPrices.stage1Price !== null && (
+                    <div>
+                      <div style={{ color: 'var(--text-secondary)' }}>Stage 1: €{previewPrices.stage1Price}</div>
+                      <div style={{ color: '#00aaff', fontWeight: '500' }}>
+                        Stage 1+: €{Math.round(previewPrices.stage1Price * (1 + parseFloat(stage1PlusPercentage) / 100))}
+                      </div>
+                    </div>
+                  )}
+                  {previewPrices.stage2Price !== null && (
+                    <div>
+                      <div style={{ color: 'var(--text-secondary)' }}>Stage 2: €{previewPrices.stage2Price}</div>
+                      <div style={{ color: '#00aaff', fontWeight: '500' }}>
+                        Stage 2+: €{Math.round(previewPrices.stage2Price * (1 + parseFloat(stage2PlusPercentage) / 100))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+                  {t('noPreviewData') || 'No price data available for preview. Example:'}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
+                    <div>
+                      <div style={{ color: 'var(--text-secondary)' }}>Stage 1: €600</div>
+                      <div style={{ color: '#00aaff', fontWeight: '500' }}>
+                        Stage 1+: €{Math.round(600 * (1 + parseFloat(stage1PlusPercentage) / 100))}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ color: 'var(--text-secondary)' }}>Stage 2: €800</div>
+                      <div style={{ color: '#00aaff', fontWeight: '500' }}>
+                        Stage 2+: €{Math.round(800 * (1 + parseFloat(stage2PlusPercentage) / 100))}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <div style={{ color: 'var(--text-secondary)' }}>Stage 2: €800</div>
-                  <div style={{ color: '#00aaff', fontWeight: '500' }}>
-                    Stage 2+: €{Math.round(800 * (1 + parseFloat(stage2PlusPercentage) / 100))}
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           )}
 

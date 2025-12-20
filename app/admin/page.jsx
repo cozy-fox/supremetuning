@@ -2209,7 +2209,7 @@ function VisualEditorSection({
                     <Percent size={18} />
                     <span>{t('stagePlus') || 'Stage+'}</span>
                   </button>
-                  <button
+                  {/* <button
                     onClick={(e) => {
                       e.stopPropagation();
                       // TODO: Add third option functionality
@@ -2235,7 +2235,7 @@ function VisualEditorSection({
                   >
                     <Database size={18} />
                     <span>{t('dataTools') || 'Data Tools'}</span>
-                  </button>
+                  </button> */}
                 </div>
               )}
             </>

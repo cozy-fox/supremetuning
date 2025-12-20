@@ -1,6 +1,127 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 
+/**
+ * GET /api/admin/stage-plus-pricing - Get sample prices for preview
+ *
+ * Query params:
+ * - level: 'all', 'brand', 'model', 'generation', 'engine'
+ * - targetId: ID of the target (optional, required for non-all levels)
+ * - groupId: Optional group filter
+ */
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const level = searchParams.get('level') || 'all';
+    const targetId = searchParams.get('targetId') ? parseInt(searchParams.get('targetId')) : null;
+    const groupId = searchParams.get('groupId') ? parseInt(searchParams.get('groupId')) : null;
+
+    const client = await clientPromise;
+    const db = client.db('supremetuning');
+    const stagesCollection = db.collection('stages');
+    const enginesCollection = db.collection('engines');
+    const typesCollection = db.collection('types');
+    const modelsCollection = db.collection('models');
+    const brandsCollection = db.collection('brands');
+
+    // Build filter for engines based on level
+    let engineIds = [];
+    let sampleInfo = { level };
+
+    if (level === 'all') {
+      // Get first engine with stages
+      const firstEngine = await enginesCollection.findOne({});
+      if (firstEngine) {
+        engineIds = [firstEngine.id];
+        sampleInfo.engineName = firstEngine.name;
+      }
+    } else if (level === 'brand' && targetId) {
+      // Get first model and engine for this brand
+      let brandModelsQuery = { brandId: targetId };
+      if (groupId) {
+        brandModelsQuery.groupId = groupId;
+      }
+      const firstModel = await modelsCollection.findOne(brandModelsQuery);
+      if (firstModel) {
+        const firstType = await typesCollection.findOne({ modelId: firstModel.id });
+        if (firstType) {
+          const firstEngine = await enginesCollection.findOne({ typeId: firstType.id });
+          if (firstEngine) {
+            engineIds = [firstEngine.id];
+            sampleInfo.modelName = firstModel.name;
+            sampleInfo.generationName = firstType.name;
+            sampleInfo.engineName = firstEngine.name;
+          }
+        }
+      }
+      const brand = await brandsCollection.findOne({ id: targetId });
+      if (brand) sampleInfo.brandName = brand.name;
+    } else if (level === 'model' && targetId) {
+      const firstType = await typesCollection.findOne({ modelId: targetId });
+      if (firstType) {
+        const firstEngine = await enginesCollection.findOne({ typeId: firstType.id });
+        if (firstEngine) {
+          engineIds = [firstEngine.id];
+          sampleInfo.generationName = firstType.name;
+          sampleInfo.engineName = firstEngine.name;
+        }
+      }
+      const model = await modelsCollection.findOne({ id: targetId });
+      if (model) sampleInfo.modelName = model.name;
+    } else if (level === 'generation' && targetId) {
+      const firstEngine = await enginesCollection.findOne({ typeId: targetId });
+      if (firstEngine) {
+        engineIds = [firstEngine.id];
+        sampleInfo.engineName = firstEngine.name;
+      }
+      const type = await typesCollection.findOne({ id: targetId });
+      if (type) sampleInfo.generationName = type.name;
+    } else if (level === 'engine' && targetId) {
+      engineIds = [targetId];
+      const engine = await enginesCollection.findOne({ id: targetId });
+      if (engine) sampleInfo.engineName = engine.name;
+    }
+
+    if (engineIds.length === 0) {
+      return NextResponse.json({
+        stage1Price: null,
+        stage2Price: null,
+        hasData: false,
+        sampleInfo
+      });
+    }
+
+    // Get stages for the sample engine
+    const stages = await stagesCollection.find({
+      engineId: { $in: engineIds }
+    }).toArray();
+
+    // Find Stage 1 and Stage 2 prices
+    const stage1 = stages.find(s =>
+      s.stageName?.toLowerCase() === 'stage 1' ||
+      s.stageName?.toLowerCase() === 'stage1'
+    );
+    const stage2 = stages.find(s =>
+      s.stageName?.toLowerCase() === 'stage 2' ||
+      s.stageName?.toLowerCase() === 'stage2'
+    );
+
+    return NextResponse.json({
+      stage1Price: stage1?.price || null,
+      stage2Price: stage2?.price || null,
+      hasData: !!(stage1?.price || stage2?.price),
+      sampleInfo
+    });
+
+  } catch (error) {
+    console.error('❌ Stage+ preview error:', error);
+    return NextResponse.json(
+      { message: 'Failed to get preview prices', error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PUT(request) {
   try {
     const {

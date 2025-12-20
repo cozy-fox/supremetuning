@@ -102,28 +102,31 @@ export async function PUT(request) {
     }
 
     let updatedCount = 0;
+    const bulkOperations = [];
 
     if (updateType === 'absolute' && priceData.prices) {
-      // Update specific stage prices with absolute values
+      // Build bulk operations for absolute price updates
       for (const stage of stages) {
         const stageName = stage.stageName?.toLowerCase().replace(/\s+/g, '').replace(/\+/g, 'plus');
         const price = priceData.prices[stageName] ?? priceData.prices[stage.stageName];
-        
+
         if (price !== undefined && price !== null) {
-          await stagesCollection.updateOne(
-            { id: stage.id },
-            { $set: { price: parseInt(price) } }
-          );
+          bulkOperations.push({
+            updateOne: {
+              filter: { id: stage.id },
+              update: { $set: { price: parseInt(price) } }
+            }
+          });
           updatedCount++;
         }
       }
     } else if (updateType === 'percentage') {
-      // Update all prices by percentage
+      // Build bulk operations for percentage updates
       const { percentage, operation } = priceData;
-      
+
       for (const stage of stages) {
         let newPrice = stage.price || 0;
-        
+
         if (operation === 'increase') {
           newPrice = Math.round(newPrice * (1 + percentage / 100));
         } else if (operation === 'decrease') {
@@ -131,20 +134,28 @@ export async function PUT(request) {
         } else if (operation === 'set') {
           newPrice = parseInt(percentage); // In this case, percentage is actually the absolute value
         }
-        
-        await stagesCollection.updateOne(
-          { id: stage.id },
-          { $set: { price: Math.max(0, newPrice) } }
-        );
+
+        bulkOperations.push({
+          updateOne: {
+            filter: { id: stage.id },
+            update: { $set: { price: Math.max(0, newPrice) } }
+          }
+        });
         updatedCount++;
       }
     } else if (updateType === 'fixed' && priceData.price !== undefined) {
-      // Set all stages to a fixed price
+      // Set all stages to a fixed price using updateMany (already efficient)
       await stagesCollection.updateMany(
         { engineId: { $in: engineIds } },
         { $set: { price: parseInt(priceData.price) } }
       );
       updatedCount = stages.length;
+    }
+
+    // Execute bulk operations in a single database call
+    if (bulkOperations.length > 0) {
+      const result = await stagesCollection.bulkWrite(bulkOperations, { ordered: false });
+      console.log(`✅ Bulk write complete: ${result.modifiedCount} stages modified`);
     }
 
     console.log(`✅ Bulk update complete: ${updatedCount} stages updated across ${engineIds.length} engines`);
