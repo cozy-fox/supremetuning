@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Percent, AlertCircle, X } from 'lucide-react';
+import { Percent, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/components/LanguageContext';
 
 export default function StagePlusPricingDialog({
@@ -9,44 +9,100 @@ export default function StagePlusPricingDialog({
   onClose,
   onApply,
   brands = [],
+  groups = [],
   models = [],
-  generations = []
+  generations = [],
+  engines = []
 }) {
+  const [applyMode, setApplyMode] = useState('all'); // 'all' or 'selection'
+  const [level, setLevel] = useState('brand');
+  const [selectedBrand, setSelectedBrand] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState('');
+  const [selectedModel, setSelectedModel] = useState('');
+  const [selectedGeneration, setSelectedGeneration] = useState('');
+  const [selectedEngine, setSelectedEngine] = useState('');
+
   const [stage1PlusPercentage, setStage1PlusPercentage] = useState('15');
   const [stage2PlusPercentage, setStage2PlusPercentage] = useState('15');
   const [isApplying, setIsApplying] = useState(false);
 
-  // Selection state
-  const [scope, setScope] = useState('all'); // 'all', 'brand', 'model', 'generation'
-  const [selectedBrand, setSelectedBrand] = useState('');
-  const [selectedModel, setSelectedModel] = useState('');
-  const [selectedGeneration, setSelectedGeneration] = useState('');
-
   const { t } = useLanguage();
 
-  // Reset selections when dialog opens
+  // Reset form when dialog opens
   useEffect(() => {
     if (show) {
-      setScope('all');
-      setSelectedBrand('');
+      setApplyMode('all');
+      setLevel('brand');
+      setSelectedBrand(brands[0]?.id || '');
+      setSelectedGroup('');
       setSelectedModel('');
       setSelectedGeneration('');
+      setSelectedEngine('');
       setStage1PlusPercentage('15');
       setStage2PlusPercentage('15');
     }
-  }, [show]);
-
-  // Filter data based on selections
-  const filteredModels = models.filter(m =>
-    selectedBrand ? m.brandId === parseInt(selectedBrand) : true
-  );
-  const filteredGenerations = generations.filter(g =>
-    selectedModel ? g.modelId === parseInt(selectedModel) : true
-  );
+  }, [show, brands]);
 
   if (!show) return null;
 
-  const handleApply = async () => {
+  // Filter data based on selections
+  const filteredGroups = groups.filter(g => g.brandId === parseInt(selectedBrand));
+  const filteredModels = models.filter(m =>
+    m.brandId === parseInt(selectedBrand) &&
+    (selectedGroup ? m.groupId === parseInt(selectedGroup) : true)
+  );
+  const filteredGenerations = generations.filter(g => g.modelId === parseInt(selectedModel));
+  const filteredEngines = engines.filter(e => e.typeId === parseInt(selectedGeneration));
+
+  const getTargetId = () => {
+    if (applyMode === 'all') return null;
+    
+    switch (level) {
+      case 'engine': return selectedEngine;
+      case 'generation': return selectedGeneration;
+      case 'model': return selectedModel;
+      case 'brand': return selectedBrand;
+      default: return selectedBrand;
+    }
+  };
+
+  const getTargetName = () => {
+    if (applyMode === 'all') {
+      return t('allBrands') || 'All Brands';
+    }
+
+    let name = '';
+    switch (level) {
+      case 'engine':
+        name = engines.find(e => e.id === parseInt(selectedEngine))?.name || 'Engine';
+        break;
+      case 'generation':
+        name = generations.find(g => g.id === parseInt(selectedGeneration))?.name || 'Generation';
+        break;
+      case 'model':
+        name = models.find(m => m.id === parseInt(selectedModel))?.name || 'Model';
+        break;
+      case 'brand':
+        name = brands.find(b => b.id === parseInt(selectedBrand))?.name || 'Brand';
+        break;
+      default:
+        name = 'Selection';
+    }
+
+    // Add group filter info if selected
+    if (selectedGroup && (level === 'brand' || level === 'model')) {
+      const groupName = groups.find(g => g.id === parseInt(selectedGroup))?.name;
+      if (groupName) {
+        name += ` (${groupName} group only)`;
+      }
+    }
+
+    return name;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
     const percentage1Plus = parseFloat(stage1PlusPercentage);
     const percentage2Plus = parseFloat(stage2PlusPercentage);
 
@@ -62,10 +118,28 @@ export default function StagePlusPricingDialog({
 
     setIsApplying(true);
     try {
-      await onApply({
+      const updatePayload = {
         stage1PlusPercentage: percentage1Plus,
         stage2PlusPercentage: percentage2Plus
-      });
+      };
+
+      // Add level and targetId if not "all"
+      if (applyMode === 'selection') {
+        updatePayload.level = level;
+        const targetId = getTargetId();
+        if (targetId) {
+          updatePayload.targetId = parseInt(targetId);
+        }
+        
+        // Add groupId filter if a group is selected
+        if (selectedGroup) {
+          updatePayload.groupId = parseInt(selectedGroup);
+        }
+      } else {
+        updatePayload.level = 'all';
+      }
+
+      await onApply(updatePayload);
       onClose();
     } catch (error) {
       console.error('Failed to apply Stage+ pricing:', error);
@@ -74,8 +148,55 @@ export default function StagePlusPricingDialog({
     }
   };
 
+  const isValid = () => {
+    // Check percentages
+    if (!stage1PlusPercentage || !stage2PlusPercentage ||
+        isNaN(parseFloat(stage1PlusPercentage)) ||
+        isNaN(parseFloat(stage2PlusPercentage))) {
+      return false;
+    }
+
+    // For "all" mode, just check percentages
+    if (applyMode === 'all') {
+      return true;
+    }
+
+    // For selection mode, check targetId
+    const targetId = getTargetId();
+    return !!targetId;
+  };
+
+  const selectStyle = {
+    width: '100%',
+    padding: '10px 12px',
+    borderRadius: '8px',
+    border: '1px solid var(--border)',
+    background: 'rgba(50, 55, 60, 0.8)',
+    color: 'var(--text-main)',
+    fontSize: '14px',
+    cursor: 'pointer'
+  };
+
+  const inputStyle = {
+    width: '100%',
+    padding: '10px 12px',
+    borderRadius: '8px',
+    border: '1px solid var(--border)',
+    background: 'rgba(255, 255, 255, 0.05)',
+    color: 'var(--text-main)',
+    fontSize: '14px'
+  };
+
+  const labelStyle = {
+    display: 'block',
+    marginBottom: '6px',
+    fontSize: '0.85rem',
+    color: 'var(--text-secondary)'
+  };
+
   return (
     <div
+      className="dialog-container"
       style={{
         position: 'fixed',
         top: 0,
@@ -97,8 +218,10 @@ export default function StagePlusPricingDialog({
         style={{
           background: 'rgba(0,0,0,1)',
           borderRadius: '16px',
-          maxWidth: '600px',
+          maxWidth: '550px',
           width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto',
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
           animation: 'scaleIn 0.2s ease-out'
         }}
@@ -106,6 +229,7 @@ export default function StagePlusPricingDialog({
       >
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div
+            className="dialog-icon"
             style={{
               background: 'rgba(0, 170, 255, 0.1)',
               borderRadius: '50%',
@@ -119,146 +243,351 @@ export default function StagePlusPricingDialog({
           >
             <Percent size={32} color="#00aaff" />
           </div>
-          <h3 style={{ margin: '0 0 8px 0' }}>
-            {t('stagePlusPricing') || 'Stage+ Automatic Pricing'}
-          </h3>
+          <h3 style={{ margin: '0 0 8px 0' }}>{t('stagePlusAutomaticPricing') || 'Stage+ Automatic Pricing'}</h3>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>
+            {t('stagePlusExplanation') || 'Stage 1+ = Stage 1 price + percentage | Stage 2+ = Stage 2 price + percentage'}
+          </p>
         </div>
 
-        <div>
-          {/* Info Box */}
-          <div style={{
-            padding: '16px',
-            background: 'rgba(0, 170, 255, 0.1)',
-            border: '1px solid rgba(0, 170, 255, 0.3)',
-            borderRadius: '8px',
-            marginBottom: '24px'
-          }}>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-              <AlertCircle size={20} color="#00aaff" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div>
-                <h4 style={{ margin: '0 0 8px 0', color: '#00aaff', fontSize: '14px' }}>
-                  {t('automaticPricingInfo') || 'Automatic Pricing Rule'}
-                </h4>
-                <p style={{ margin: 0, fontSize: '13px', color: '#b0b0b0', lineHeight: '1.5' }}>
-                  {t('stagePlusDescription') || 'This will automatically calculate Stage 1+ and Stage 2+ prices based on a percentage increase over Stage 1 and Stage 2 prices for ALL engines in the database.'}
-                </p>
+        <form onSubmit={handleSubmit}>
+          {/* Apply Mode Selection: ALL or SELECTION */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>{t('applyMode') || 'Apply To'}</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }} className="dialog-grid-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setApplyMode('all');
+                  setSelectedBrand('');
+                  setSelectedGroup('');
+                  setSelectedModel('');
+                  setSelectedGeneration('');
+                  setSelectedEngine('');
+                }}
+                style={{
+                  padding: '10px 8px',
+                  borderRadius: '8px',
+                  border: applyMode === 'all' ? '2px solid #00aaff' : '1px solid var(--border)',
+                  background: applyMode === 'all' ? 'rgba(0, 170, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                  color: applyMode === 'all' ? '#00aaff' : 'var(--text-main)',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  textTransform: 'uppercase'
+                }}
+              >
+                {t('all') || 'ALL'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setApplyMode('selection');
+                  setSelectedBrand(brands[0]?.id || '');
+                }}
+                style={{
+                  padding: '10px 8px',
+                  borderRadius: '8px',
+                  border: applyMode === 'selection' ? '2px solid #00aaff' : '1px solid var(--border)',
+                  background: applyMode === 'selection' ? 'rgba(0, 170, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                  color: applyMode === 'selection' ? '#00aaff' : 'var(--text-main)',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  textTransform: 'uppercase'
+                }}
+              >
+                {t('selection') || 'SELECTION'}
+              </button>
+            </div>
+          </div>
+
+          {/* Level Selection - Only show if SELECTION mode */}
+          {applyMode === 'selection' && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={labelStyle}>{t('updateLevel') || 'Update Level'}</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }} className="dialog-grid-4">
+                {['brand', 'model', 'generation', 'engine'].map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => setLevel(l)}
+                    style={{
+                      padding: '10px 8px',
+                      borderRadius: '8px',
+                      border: level === l ? '2px solid #00aaff' : '1px solid var(--border)',
+                      background: level === l ? 'rgba(0, 170, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                      color: level === l ? '#00aaff' : 'var(--text-main)',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      textTransform: 'capitalize'
+                    }}
+                  >
+                    {l}
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Stage 1+ Percentage */}
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-              {t('stage1PlusPercentage') || 'Stage 1+ Price Increase (%)'}
-            </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <input
-                type="number"
-                value={stage1PlusPercentage}
-                onChange={(e) => setStage1PlusPercentage(e.target.value)}
-                min="0"
-                max="100"
-                step="1"
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  fontSize: '16px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-input)',
-                  color: 'var(--text-main)'
-                }}
-                placeholder="15"
-              />
-              <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>%</span>
+          {/* Hierarchical Selectors - Only show if SELECTION mode */}
+          {applyMode === 'selection' && (
+            <>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={labelStyle}>{t('brand') || 'Brand'}</label>
+                <select
+                  value={selectedBrand}
+                  onChange={(e) => {
+                    setSelectedBrand(e.target.value);
+                    setSelectedGroup('');
+                    setSelectedModel('');
+                    setSelectedGeneration('');
+                    setSelectedEngine('');
+                  }}
+                  style={selectStyle}
+                >
+                  <option value="">{t('selectBrand') || '-- Select Brand --'}</option>
+                  {brands.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Group Selector - Optional filter for all levels */}
+              {selectedBrand && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={labelStyle}>{t('groupOptionalFilter') || 'Group (Optional Filter)'}</label>
+                  <select
+                    value={selectedGroup}
+                    onChange={(e) => {
+                      setSelectedGroup(e.target.value);
+                      setSelectedModel('');
+                      setSelectedGeneration('');
+                      setSelectedEngine('');
+                    }}
+                    style={selectStyle}
+                  >
+                    <option value="">{t('allGroups') || 'All Groups'}</option>
+                    {filteredGroups.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Model Selector - Required for model, generation, and engine levels */}
+              {(level === 'model' || level === 'generation' || level === 'engine') && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={labelStyle}>{t('model') || 'Model'} *</label>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => {
+                      setSelectedModel(e.target.value);
+                      setSelectedGeneration('');
+                      setSelectedEngine('');
+                    }}
+                    style={selectStyle}
+                    required
+                  >
+                    <option value="">{t('selectModel') || '-- Select Model --'}</option>
+                    {filteredModels.map(m => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Generation Selector - Required for generation and engine levels */}
+              {(level === 'generation' || level === 'engine') && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={labelStyle}>{t('generation') || 'Generation'} *</label>
+                  <select
+                    value={selectedGeneration}
+                    onChange={(e) => {
+                      setSelectedGeneration(e.target.value);
+                      setSelectedEngine('');
+                    }}
+                    style={selectStyle}
+                    required
+                    disabled={!selectedModel}
+                  >
+                    <option value="">{selectedModel ? (t('selectGeneration') || '-- Select Generation --') : (t('selectModelFirst') || '-- Select Model First --')}</option>
+                    {filteredGenerations.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Engine Selector - Required for engine level */}
+              {level === 'engine' && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={labelStyle}>{t('engine') || 'Engine'} *</label>
+                  <select
+                    value={selectedEngine}
+                    onChange={(e) => setSelectedEngine(e.target.value)}
+                    style={selectStyle}
+                    required
+                    disabled={!selectedGeneration}
+                  >
+                    <option value="">{selectedGeneration ? (t('selectEngine') || '-- Select Engine --') : (t('selectGenerationFirst') || '-- Select Generation First --')}</option>
+                    {filteredEngines.map(e => (
+                      <option key={e.id} value={e.id}>{e.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Pricing Rules Section */}
+          <div style={{ marginBottom: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+            <label style={labelStyle}>{t('pricingRules') || 'Pricing Rules'}</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }} className="dialog-grid-2">
+              <div>
+                <label style={{ ...labelStyle, fontSize: '0.75rem' }}>Stage 1+ (%)</label>
+                <input
+                  type="number"
+                  value={stage1PlusPercentage}
+                  onChange={(e) => setStage1PlusPercentage(e.target.value)}
+                  placeholder="e.g. 15"
+                  style={inputStyle}
+                  min="0"
+                  max="100"
+                  step="1"
+                />
+              </div>
+              <div>
+                <label style={{ ...labelStyle, fontSize: '0.75rem' }}>Stage 2+ (%)</label>
+                <input
+                  type="number"
+                  value={stage2PlusPercentage}
+                  onChange={(e) => setStage2PlusPercentage(e.target.value)}
+                  placeholder="e.g. 15"
+                  style={inputStyle}
+                  min="0"
+                  max="100"
+                  step="1"
+                />
+              </div>
             </div>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
-              {t('example') || 'Example'}: Stage 1 = €600 → Stage 1+ = €{Math.round(600 * (1 + parseFloat(stage1PlusPercentage || 0) / 100))}
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '8px', marginBottom: 0 }}>
+              {t('stagePlusExplanation') || 'Stage 1+ = Stage 1 price + percentage | Stage 2+ = Stage 2 price + percentage'}
             </p>
           </div>
 
-          {/* Stage 2+ Percentage */}
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-              {t('stage2PlusPercentage') || 'Stage 2+ Price Increase (%)'}
-            </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <input
-                type="number"
-                value={stage2PlusPercentage}
-                onChange={(e) => setStage2PlusPercentage(e.target.value)}
-                min="0"
-                max="100"
-                step="1"
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  fontSize: '16px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-input)',
-                  color: 'var(--text-main)'
-                }}
-                placeholder="15"
-              />
-              <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>%</span>
+          {/* Price Preview */}
+          {stage1PlusPercentage && stage2PlusPercentage && !isNaN(parseFloat(stage1PlusPercentage)) && !isNaN(parseFloat(stage2PlusPercentage)) && (
+            <div style={{
+              marginBottom: '16px',
+              padding: '12px',
+              background: 'rgba(0, 170, 255, 0.05)',
+              borderRadius: '8px',
+              border: '1px solid rgba(0, 170, 255, 0.2)'
+            }}>
+              <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
+                {t('pricePreview') || 'Price Preview Example:'}
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
+                <div>
+                  <div style={{ color: 'var(--text-secondary)' }}>Stage 1: €600</div>
+                  <div style={{ color: '#00aaff', fontWeight: '500' }}>
+                    Stage 1+: €{Math.round(600 * (1 + parseFloat(stage1PlusPercentage) / 100))}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color: 'var(--text-secondary)' }}>Stage 2: €800</div>
+                  <div style={{ color: '#00aaff', fontWeight: '500' }}>
+                    Stage 2+: €{Math.round(800 * (1 + parseFloat(stage2PlusPercentage) / 100))}
+                  </div>
+                </div>
+              </div>
             </div>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
-              {t('example') || 'Example'}: Stage 2 = €900 → Stage 2+ = €{Math.round(900 * (1 + parseFloat(stage2PlusPercentage || 0) / 100))}
-            </p>
-          </div>
+          )}
 
-          {/* Warning */}
-          <div style={{
-            padding: '12px',
-            background: 'rgba(255, 170, 0, 0.1)',
-            border: '1px solid rgba(255, 170, 0, 0.3)',
-            borderRadius: '6px',
-            marginBottom: '20px'
-          }}>
-            <p style={{ margin: 0, fontSize: '13px', color: '#ffaa00' }}>
-              ⚠️ {t('stagePlusWarning') || 'This will update ALL Stage 1+ and Stage 2+ prices in the entire database. This action cannot be undone.'}
-            </p>
-          </div>
-        </div>
+          {/* Summary Box */}
+          {isValid() && (
+            <div style={{
+              padding: '12px 16px',
+              background: 'rgba(0, 170, 255, 0.1)',
+              border: '1px solid rgba(0, 170, 255, 0.3)',
+              borderRadius: '8px',
+              marginBottom: '16px'
+            }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                {t('willUpdatePricesFor') || 'This will update Stage+ prices for'} <strong style={{ color: '#00aaff' }}>{getTargetName()}</strong>
+              </p>
+            </div>
+          )}
 
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
-          <button
-            onClick={onClose}
-            disabled={isApplying}
-            style={{
-              padding: '12px 24px',
-              borderRadius: '8px',
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              color: 'var(--text-main)',
-              cursor: isApplying ? 'not-allowed' : 'pointer',
-              opacity: isApplying ? 0.5 : 1,
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
-          >
-            {t('cancel') || 'Cancel'}
-          </button>
-          <button
-            onClick={handleApply}
-            disabled={isApplying}
-            style={{
-              padding: '12px 24px',
-              borderRadius: '8px',
-              border: 'none',
-              background: isApplying ? '#666' : '#00aaff',
-              color: '#fff',
-              cursor: isApplying ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '600'
-            }}
-          >
-            {isApplying ? t('applying') || 'Applying...' : t('applyPricing') || 'Apply Pricing Rule'}
-          </button>
-        </div>
+          {/* Buttons */}
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn"
+              style={{
+                flex: 1,
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)'
+              }}
+              disabled={isApplying}
+            >
+              {t('cancel') || 'Cancel'}
+            </button>
+            <button
+              type="submit"
+              className="btn"
+              style={{
+                flex: 1,
+                background: isValid() ? '#00aaff' : 'rgba(0, 170, 255, 0.3)',
+                color: isValid() ? '#1a1a1a' : '#666',
+                border: 'none',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+              disabled={!isValid() || isApplying}
+            >
+              {isApplying ? (
+                <>
+                  <Loader2 size={16} className="spin" />
+                  {t('applying') || 'Applying...'}
+                </>
+              ) : (
+                t('applyPricing') || 'Apply Pricing'
+              )}
+            </button>
+          </div>
+        </form>
       </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from {
+            transform: scale(0.9);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
+
 

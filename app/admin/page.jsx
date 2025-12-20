@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthContext';
 import { useLanguage } from '@/components/LanguageContext';
@@ -8,7 +8,8 @@ import { useProgress } from '@/components/ProgressContext';
 import Header from '@/components/Header';
 import {
   Shield, Key, RefreshCw, AlertCircle, Check, ChevronDown, ChevronUp,
-  Trash2, Car, Edit2, Plus, MoveRight, DollarSign, Eye, EyeOff, Percent
+  Trash2, Car, Edit2, Plus, MoveRight, DollarSign, Eye, EyeOff, Percent,
+  Settings, Database
 } from 'lucide-react';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -1339,7 +1340,7 @@ export default function AdminPage() {
   };
 
   // Apply Stage+ pricing rule
-  const applyStagePlusPricing = async ({ stage1PlusPercentage, stage2PlusPercentage }) => {
+  const applyStagePlusPricing = async ({ level, targetId, groupId, stage1PlusPercentage, stage2PlusPercentage }) => {
     if (operationInProgress) {
       showToast('Another operation is in progress. Please wait.', 'warning');
       return;
@@ -1349,10 +1350,23 @@ export default function AdminPage() {
     startOperation();
 
     try {
+      const payload = { stage1PlusPercentage, stage2PlusPercentage };
+
+      // Add level and targetId if provided
+      if (level) {
+        payload.level = level;
+      }
+      if (targetId) {
+        payload.targetId = targetId;
+      }
+      if (groupId) {
+        payload.groupId = groupId;
+      }
+
       const result = await fetchAPI('admin/stage-plus-pricing', {
         method: 'PUT',
         isProtected: true,
-        body: JSON.stringify({ stage1PlusPercentage, stage2PlusPercentage })
+        body: JSON.stringify(payload)
       });
 
       showToast(`Updated ${result.updatedCount} Stage+ prices (Stage 1+: +${stage1PlusPercentage}%, Stage 2+: +${stage2PlusPercentage}%)`, 'success');
@@ -1360,7 +1374,7 @@ export default function AdminPage() {
 
       // Reload data if visual editor is open
       if (showVisualEditor) {
-        await loadVisualEditorData();
+        await loadBrands();
       }
     } catch (error) {
       console.error('Stage+ pricing failed:', error);
@@ -1446,6 +1460,7 @@ export default function AdminPage() {
           deleteEngine={deleteEngine}
           renameBrand={renameBrand}
           renameGroup={renameGroup}
+          loadAllDataForBulkUpdate={loadAllDataForBulkUpdate}
           renameModel={renameModel}
           renameType={renameType}
           renameEngine={renameEngine}
@@ -1605,6 +1620,11 @@ export default function AdminPage() {
         show={stagePlusPricingDialog}
         onClose={() => setStagePlusPricingDialog(false)}
         onApply={applyStagePlusPricing}
+        brands={brands}
+        groups={allGroups}
+        models={allModels}
+        generations={allTypes}
+        engines={allEngines}
       />
 
       {/* Global Operation Loading Overlay */}
@@ -2048,9 +2068,24 @@ function VisualEditorSection({
   selectedType, handleTypeSelect,
   selectedEngine, handleEngineSelect,
   openBulkUpdate,
-  setStagePlusPricingDialog
+  setStagePlusPricingDialog,
+  loadAllDataForBulkUpdate
 }) {
   const { t } = useLanguage();
+  const [showDataManagerMenu, setShowDataManagerMenu] = React.useState(false);
+  const dataManagerMenuRef = React.useRef(null);
+
+  // Close menu when clicking outside
+  React.useEffect(() => {
+    function handleClickOutside(event) {
+      if (dataManagerMenuRef.current && !dataManagerMenuRef.current.contains(event.target)) {
+        setShowDataManagerMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <div className="card" style={{ marginBottom: '24px' }}>
       <div
@@ -2067,55 +2102,136 @@ function VisualEditorSection({
           <Car size={24} color="#a8b0b8" />
           {t('dataManager') || 'Data Manager'}
         </h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', position: 'relative' }} ref={dataManagerMenuRef}>
           {showVisualEditor && (
             <>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  openBulkUpdate();
+                  setShowDataManagerMenu(!showDataManagerMenu);
                 }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
                   padding: '8px 14px',
-                  background: 'rgba(0, 255, 136, 0.1)',
-                  border: '1px solid rgba(0, 255, 136, 0.3)',
+                  background: 'rgba(168, 176, 184, 0.1)',
+                  border: '1px solid rgba(168, 176, 184, 0.3)',
                   borderRadius: '6px',
-                  color: '#00ff88',
+                  color: '#a8b0b8',
                   fontSize: '0.85rem',
                   fontWeight: '500',
                   cursor: 'pointer'
                 }}
-                title={t('bulkUpdatePrices') || 'Bulk update prices'}
+                title={t('dataManagerOptions') || 'Data Manager Options'}
               >
-                <DollarSign size={16} />
-                <span className="bulk-btn-text">{t('bulkPrices') || 'Bulk Prices'}</span>
+                <Settings size={16} />
+                <span className="bulk-btn-text">{t('options') || 'Options'}</span>
+                <ChevronDown size={14} style={{ marginLeft: '-2px' }} />
               </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setStagePlusPricingDialog(true);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '8px 14px',
-                  background: 'rgba(0, 170, 255, 0.1)',
-                  border: '1px solid rgba(0, 170, 255, 0.3)',
-                  borderRadius: '6px',
-                  color: '#00aaff',
-                  fontSize: '0.85rem',
-                  fontWeight: '500',
-                  cursor: 'pointer'
-                }}
-                title={t('stagePlusPricing') || 'Stage+ Automatic Pricing'}
-              >
-                <Percent size={16} />
-                <span className="bulk-btn-text">{t('stagePlus') || 'Stage+'}</span>
-              </button>
+
+              {/* Dropdown Menu */}
+              {showDataManagerMenu && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '8px',
+                    background: 'rgba(20, 20, 20, 0.98)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
+                    zIndex: 1000,
+                    minWidth: '200px',
+                    overflow: 'hidden'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openBulkUpdate();
+                      setShowDataManagerMenu(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '12px 16px',
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#00ff88',
+                      fontSize: '0.9rem',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 255, 136, 0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <DollarSign size={18} />
+                    <span>{t('bulkPrices') || 'Bulk Prices'}</span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setStagePlusPricingDialog(true);
+                      loadAllDataForBulkUpdate();
+                      setShowDataManagerMenu(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '12px 16px',
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#00aaff',
+                      fontSize: '0.9rem',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 170, 255, 0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <Percent size={18} />
+                    <span>{t('stagePlus') || 'Stage+'}</span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // TODO: Add third option functionality
+                      setShowDataManagerMenu(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '12px 16px',
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#ff9500',
+                      fontSize: '0.9rem',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 149, 0, 0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <Database size={18} />
+                    <span>{t('dataTools') || 'Data Tools'}</span>
+                  </button>
+                </div>
+              )}
             </>
           )}
           {showVisualEditor ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
