@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, DollarSign, Zap, Gauge } from 'lucide-react';
+import { Loader2, RefreshCw, Zap, Gauge } from 'lucide-react';
 import { useLanguage } from '@/components/LanguageContext';
 
 export default function StagePlusPricingDialog({
@@ -63,7 +63,7 @@ export default function StagePlusPricingDialog({
           subtitle: t('stagePlusPriceExplanation') || 'Stage 1+ = Stage 1 price + percentage | Stage 2+ = Stage 2 price + percentage',
           unit: '€',
           unitPosition: 'before', // €600
-          icon: <DollarSign size={32} color="#00ff88" />,
+          icon: <RefreshCw size={32} color="#00ff88" />,
           color: '#00ff88'
         };
     }

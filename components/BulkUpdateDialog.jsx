@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DollarSign, Zap, Gauge, ChevronDown, Loader2 } from 'lucide-react';
+import { RefreshCw, Zap, Gauge, ChevronDown, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/components/LanguageContext';
 
 export default function BulkUpdateDialog({
@@ -217,7 +217,7 @@ export default function BulkUpdateDialog({
           title: t('bulkPriceUpdate') || 'Bulk Price Update',
           subtitle: t('updatePricesMultiple') || 'Update prices for multiple stages at once',
           unit: '€',
-          icon: <DollarSign size={32} color="#00ff88" />,
+          icon: <RefreshCw size={32} color="#00ff88" />,
           color: '#00ff88',
           fixedLabel: t('setAllPricesTo') || 'Set All Prices To (€)'
         };
