@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 
 /**
- * GET /api/admin/stage-plus-pricing - Get sample prices for preview
+ * GET /api/admin/stage-plus-pricing - Get sample values for preview
  *
  * Query params:
  * - level: 'all', 'brand', 'model', 'generation', 'engine'
  * - targetId: ID of the target (optional, required for non-all levels)
  * - groupId: Optional group filter
+ * - dataType: 'price', 'power', 'torque' (default: 'price')
  */
 export async function GET(request) {
   try {
@@ -15,6 +16,7 @@ export async function GET(request) {
     const level = searchParams.get('level') || 'all';
     const targetId = searchParams.get('targetId') ? parseInt(searchParams.get('targetId')) : null;
     const groupId = searchParams.get('groupId') ? parseInt(searchParams.get('groupId')) : null;
+    const dataType = searchParams.get('dataType') || 'price';
 
     const client = await clientPromise;
     const db = client.db('supremetuning');
@@ -96,7 +98,7 @@ export async function GET(request) {
       engineId: { $in: engineIds }
     }).toArray();
 
-    // Find Stage 1 and Stage 2 prices
+    // Find Stage 1 and Stage 2
     const stage1 = stages.find(s =>
       s.stageName?.toLowerCase() === 'stage 1' ||
       s.stageName?.toLowerCase() === 'stage1'
@@ -106,12 +108,39 @@ export async function GET(request) {
       s.stageName?.toLowerCase() === 'stage2'
     );
 
-    return NextResponse.json({
-      stage1Price: stage1?.price || null,
-      stage2Price: stage2?.price || null,
-      hasData: !!(stage1?.price || stage2?.price),
-      sampleInfo
-    });
+    // Return values based on dataType
+    if (dataType === 'power') {
+      return NextResponse.json({
+        stage1Value: stage1?.power || null,
+        stage2Value: stage2?.power || null,
+        hasData: !!(stage1?.power || stage2?.power),
+        sampleInfo,
+        dataType,
+        unit: 'HP'
+      });
+    } else if (dataType === 'torque') {
+      return NextResponse.json({
+        stage1Value: stage1?.torque || null,
+        stage2Value: stage2?.torque || null,
+        hasData: !!(stage1?.torque || stage2?.torque),
+        sampleInfo,
+        dataType,
+        unit: 'Nm'
+      });
+    } else {
+      // Default: price
+      return NextResponse.json({
+        stage1Value: stage1?.price || null,
+        stage2Value: stage2?.price || null,
+        // Keep legacy fields for backward compatibility
+        stage1Price: stage1?.price || null,
+        stage2Price: stage2?.price || null,
+        hasData: !!(stage1?.price || stage2?.price),
+        sampleInfo,
+        dataType: 'price',
+        unit: '€'
+      });
+    }
 
   } catch (error) {
     console.error('❌ Stage+ preview error:', error);
@@ -129,12 +158,14 @@ export async function PUT(request) {
       targetId = null,
       stage1PlusPercentage,
       stage2PlusPercentage,
-      groupId = null
+      groupId = null,
+      dataType = 'price' // 'price', 'power', or 'torque'
     } = await request.json();
 
-    console.log('🎯 Stage+ Pricing Request:', {
+    console.log('🎯 Stage+ Update Request:', {
       level,
       targetId,
+      dataType,
       stage1PlusPercentage,
       stage2PlusPercentage,
       groupId
@@ -225,64 +256,76 @@ export async function PUT(request) {
     let updatedCount = 0;
     const bulkOperations = [];
 
+    // Get the field name and unit based on dataType
+    const getFieldInfo = () => {
+      switch (dataType) {
+        case 'power': return { field: 'power', unit: 'HP' };
+        case 'torque': return { field: 'torque', unit: 'Nm' };
+        default: return { field: 'price', unit: '€' };
+      }
+    };
+    const { field, unit } = getFieldInfo();
+
     // Process each engine's stages
     for (const [engineId, stages] of Object.entries(stagesByEngine)) {
       // Find base stages
-      const stage1 = stages.find(s => 
-        s.stageName?.toLowerCase() === 'stage 1' || 
+      const stage1 = stages.find(s =>
+        s.stageName?.toLowerCase() === 'stage 1' ||
         s.stageName?.toLowerCase() === 'stage1'
       );
-      const stage2 = stages.find(s => 
-        s.stageName?.toLowerCase() === 'stage 2' || 
+      const stage2 = stages.find(s =>
+        s.stageName?.toLowerCase() === 'stage 2' ||
         s.stageName?.toLowerCase() === 'stage2'
       );
 
       // Find plus stages
-      const stage1Plus = stages.find(s => 
-        s.stageName?.toLowerCase() === 'stage 1+' || 
+      const stage1Plus = stages.find(s =>
+        s.stageName?.toLowerCase() === 'stage 1+' ||
         s.stageName?.toLowerCase() === 'stage1+'
       );
-      const stage2Plus = stages.find(s => 
-        s.stageName?.toLowerCase() === 'stage 2+' || 
+      const stage2Plus = stages.find(s =>
+        s.stageName?.toLowerCase() === 'stage 2+' ||
         s.stageName?.toLowerCase() === 'stage2+'
       );
 
       // Update Stage 1+ based on Stage 1
-      if (stage1 && stage1Plus && stage1.price) {
-        const newPrice = Math.round(stage1.price * (1 + stage1PlusPercentage / 100));
+      if (stage1 && stage1Plus && stage1[field]) {
+        const newValue = Math.round(stage1[field] * (1 + stage1PlusPercentage / 100));
         bulkOperations.push({
           updateOne: {
             filter: { id: stage1Plus.id },
-            update: { $set: { price: newPrice } }
+            update: { $set: { [field]: newValue } }
           }
         });
         updatedCount++;
-        console.log(`  Stage 1+: €${stage1.price} → €${newPrice} (+${stage1PlusPercentage}%)`);
+        console.log(`  Stage 1+ ${dataType}: ${unit}${stage1[field]} → ${unit}${newValue} (+${stage1PlusPercentage}%)`);
       }
 
       // Update Stage 2+ based on Stage 2
-      if (stage2 && stage2Plus && stage2.price) {
-        const newPrice = Math.round(stage2.price * (1 + stage2PlusPercentage / 100));
+      if (stage2 && stage2Plus && stage2[field]) {
+        const newValue = Math.round(stage2[field] * (1 + stage2PlusPercentage / 100));
         bulkOperations.push({
           updateOne: {
             filter: { id: stage2Plus.id },
-            update: { $set: { price: newPrice } }
+            update: { $set: { [field]: newValue } }
           }
         });
         updatedCount++;
-        console.log(`  Stage 2+: €${stage2.price} → €${newPrice} (+${stage2PlusPercentage}%)`);
+        console.log(`  Stage 2+ ${dataType}: ${unit}${stage2[field]} → ${unit}${newValue} (+${stage2PlusPercentage}%)`);
       }
     }
 
     // Execute bulk update
     if (bulkOperations.length > 0) {
       const result = await stagesCollection.bulkWrite(bulkOperations);
-      console.log(`✅ Updated ${result.modifiedCount} stage prices`);
+      console.log(`✅ Updated ${result.modifiedCount} stage ${dataType} values`);
     }
 
+    const dataTypeLabels = { price: 'prices', power: 'power values', torque: 'torque values' };
     return NextResponse.json({
-      message: `Successfully updated ${updatedCount} Stage+ prices`,
+      message: `Successfully updated ${updatedCount} Stage+ ${dataTypeLabels[dataType] || 'values'}`,
       updatedCount,
+      dataType,
       stage1PlusPercentage,
       stage2PlusPercentage
     });

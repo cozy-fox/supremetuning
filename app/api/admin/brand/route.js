@@ -1,7 +1,70 @@
-import { updateById, deleteById, getModels, getTypes, getEngines, getStages } from '@/lib/data';
+import { updateById, deleteById, getModels, getTypes, getEngines, getStages, insertOne } from '@/lib/data';
 import { requireAdmin } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
+
+/**
+ * POST /api/admin/brand - Create a new brand
+ */
+export async function POST(request) {
+  const authResult = requireAdmin(request);
+  if (authResult.error) {
+    return NextResponse.json(
+      { message: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
+  try {
+    const { name, logo } = await request.json();
+
+    if (!name) {
+      return NextResponse.json(
+        { message: 'Brand name is required' },
+        { status: 400 }
+      );
+    }
+
+    const slug = name.trim().toLowerCase().replace(/\s+/g, '-');
+
+    // Check if brand with this name already exists
+    const brandsCol = await getCollection('brands');
+    const existingBrand = await brandsCol.findOne({
+      $or: [
+        { name: { $regex: new RegExp(`^${name.trim()}$`, 'i') } },
+        { slug }
+      ]
+    });
+
+    if (existingBrand) {
+      return NextResponse.json(
+        { message: 'A brand with this name already exists' },
+        { status: 409 }
+      );
+    }
+
+    const newBrand = {
+      name: name.trim(),
+      slug,
+      logo: logo || null
+    };
+
+    const result = await insertOne('brands', newBrand);
+
+    console.log(`✅ Created brand: ${name} (id=${result.id})`);
+
+    return NextResponse.json({
+      message: 'Brand created successfully',
+      brand: result
+    });
+  } catch (error) {
+    console.error('❌ Create brand error:', error);
+    return NextResponse.json(
+      { message: 'Failed to create brand', error: error.message },
+      { status: 500 }
+    );
+  }
+}
 
 /**
  * PUT /api/admin/brand - Update a brand

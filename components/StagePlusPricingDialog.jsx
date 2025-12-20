@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Percent, Loader2 } from 'lucide-react';
+import { Loader2, DollarSign, Zap, Gauge } from 'lucide-react';
 import { useLanguage } from '@/components/LanguageContext';
 
 export default function StagePlusPricingDialog({
@@ -23,21 +23,68 @@ export default function StagePlusPricingDialog({
   const [selectedGeneration, setSelectedGeneration] = useState('');
   const [selectedEngine, setSelectedEngine] = useState('');
 
+  // Data type: 'price', 'power', 'torque'
+  const [dataType, setDataType] = useState('price');
+
   const [stage1PlusPercentage, setStage1PlusPercentage] = useState('15');
   const [stage2PlusPercentage, setStage2PlusPercentage] = useState('15');
   const [isApplying, setIsApplying] = useState(false);
 
-  // Real price preview state
-  const [previewPrices, setPreviewPrices] = useState({ stage1Price: null, stage2Price: null, hasData: false, sampleInfo: {} });
+  // Real preview state
+  const [previewData, setPreviewData] = useState({ stage1Value: null, stage2Value: null, hasData: false, sampleInfo: {}, unit: '€' });
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   const { t } = useLanguage();
 
-  // Fetch real preview prices from API
-  const fetchPreviewPrices = useCallback(async () => {
+  // Get data type specific info
+  const getDataTypeInfo = () => {
+    switch (dataType) {
+      case 'power':
+        return {
+          title: t('stagePlusPowerUpdate') || 'Stage+ Power Update',
+          subtitle: t('stagePlusPowerExplanation') || 'Stage 1+ = Stage 1 power + percentage | Stage 2+ = Stage 2 power + percentage',
+          unit: 'HP',
+          unitPosition: 'after', // 300 HP
+          icon: <Zap size={32} color="#00aaff" />,
+          color: '#00aaff'
+        };
+      case 'torque':
+        return {
+          title: t('stagePlusTorqueUpdate') || 'Stage+ Torque Update',
+          subtitle: t('stagePlusTorqueExplanation') || 'Stage 1+ = Stage 1 torque + percentage | Stage 2+ = Stage 2 torque + percentage',
+          unit: 'Nm',
+          unitPosition: 'after', // 450 Nm
+          icon: <Gauge size={32} color="#ff8800" />,
+          color: '#ff8800'
+        };
+      default:
+        return {
+          title: t('stagePlusUpdate') || 'Stage+ Update',
+          subtitle: t('stagePlusPriceExplanation') || 'Stage 1+ = Stage 1 price + percentage | Stage 2+ = Stage 2 price + percentage',
+          unit: '€',
+          unitPosition: 'before', // €600
+          icon: <DollarSign size={32} color="#00ff88" />,
+          color: '#00ff88'
+        };
+    }
+  };
+
+  const dataTypeInfo = getDataTypeInfo();
+
+  // Helper to format value with unit
+  const formatValue = (value) => {
+    if (dataTypeInfo.unitPosition === 'after') {
+      return `${value} ${dataTypeInfo.unit}`;
+    }
+    return `${dataTypeInfo.unit}${value}`;
+  };
+
+  // Fetch real preview values from API
+  const fetchPreviewData = useCallback(async () => {
     setLoadingPreview(true);
     try {
       const params = new URLSearchParams();
+      params.set('dataType', dataType);
 
       if (applyMode === 'all') {
         params.set('level', 'all');
@@ -60,40 +107,41 @@ export default function StagePlusPricingDialog({
       const response = await fetch(`/api/admin/stage-plus-pricing?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
-        setPreviewPrices(data);
+        setPreviewData(data);
       }
     } catch (error) {
-      console.error('Failed to fetch preview prices:', error);
+      console.error('Failed to fetch preview data:', error);
     } finally {
       setLoadingPreview(false);
     }
-  }, [applyMode, level, selectedBrand, selectedGroup, selectedModel, selectedGeneration, selectedEngine]);
+  }, [applyMode, level, dataType, selectedBrand, selectedGroup, selectedModel, selectedGeneration, selectedEngine]);
 
-  // Fetch preview prices when selections change
+  // Fetch preview data when selections change
   useEffect(() => {
     if (show) {
       // Only fetch if we have enough data
       if (applyMode === 'all') {
-        fetchPreviewPrices();
+        fetchPreviewData();
       } else if (applyMode === 'selection') {
         if (level === 'brand' && selectedBrand) {
-          fetchPreviewPrices();
+          fetchPreviewData();
         } else if (level === 'model' && selectedModel) {
-          fetchPreviewPrices();
+          fetchPreviewData();
         } else if (level === 'generation' && selectedGeneration) {
-          fetchPreviewPrices();
+          fetchPreviewData();
         } else if (level === 'engine' && selectedEngine) {
-          fetchPreviewPrices();
+          fetchPreviewData();
         }
       }
     }
-  }, [show, applyMode, level, selectedBrand, selectedGroup, selectedModel, selectedGeneration, selectedEngine, fetchPreviewPrices]);
+  }, [show, applyMode, level, dataType, selectedBrand, selectedGroup, selectedModel, selectedGeneration, selectedEngine, fetchPreviewData]);
 
   // Reset form when dialog opens
   useEffect(() => {
     if (show) {
       setApplyMode('all');
       setLevel('brand');
+      setDataType('price');
       setSelectedBrand('');
       setSelectedGroup('');
       setSelectedModel('');
@@ -101,7 +149,7 @@ export default function StagePlusPricingDialog({
       setSelectedEngine('');
       setStage1PlusPercentage('15');
       setStage2PlusPercentage('15');
-      setPreviewPrices({ stage1Price: null, stage2Price: null, hasData: false, sampleInfo: {} });
+      setPreviewData({ stage1Value: null, stage2Value: null, hasData: false, sampleInfo: {}, unit: '€' });
     }
   }, [show, brands]);
 
@@ -182,7 +230,8 @@ export default function StagePlusPricingDialog({
     try {
       const updatePayload = {
         stage1PlusPercentage: percentage1Plus,
-        stage2PlusPercentage: percentage2Plus
+        stage2PlusPercentage: percentage2Plus,
+        dataType: dataType // Include the data type (price, power, torque)
       };
 
       // Add level and targetId if not "all"
@@ -192,7 +241,7 @@ export default function StagePlusPricingDialog({
         if (targetId) {
           updatePayload.targetId = parseInt(targetId);
         }
-        
+
         // Add groupId filter if a group is selected
         if (selectedGroup) {
           updatePayload.groupId = parseInt(selectedGroup);
@@ -204,7 +253,7 @@ export default function StagePlusPricingDialog({
       await onApply(updatePayload);
       onClose();
     } catch (error) {
-      console.error('Failed to apply Stage+ pricing:', error);
+      console.error('Failed to apply Stage+ update:', error);
     } finally {
       setIsApplying(false);
     }
@@ -293,7 +342,7 @@ export default function StagePlusPricingDialog({
           <div
             className="dialog-icon"
             style={{
-              background: 'rgba(0, 170, 255, 0.1)',
+              background: `${dataTypeInfo.color}15`,
               borderRadius: '50%',
               width: '64px',
               height: '64px',
@@ -303,15 +352,49 @@ export default function StagePlusPricingDialog({
               margin: '0 auto 16px'
             }}
           >
-            <Percent size={32} color="#00aaff" />
+            {dataTypeInfo.icon}
           </div>
-          <h3 style={{ margin: '0 0 8px 0' }}>{t('stagePlusAutomaticPricing') || 'Stage+ Automatic Pricing'}</h3>
+          <h3 style={{ margin: '0 0 8px 0' }}>{dataTypeInfo.title}</h3>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>
-            {t('stagePlusExplanation') || 'Stage 1+ = Stage 1 price + percentage | Stage 2+ = Stage 2 price + percentage'}
+            {dataTypeInfo.subtitle}
           </p>
         </div>
 
         <form onSubmit={handleSubmit}>
+          {/* Data Type Selection */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>{t('dataType') || 'Data Type'}</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }} className="dialog-grid-3">
+              {[
+                { value: 'price', label: t('price') || 'Price', icon: '€', color: '#00ff88' },
+                { value: 'power', label: t('power') || 'Power', icon: 'HP', color: '#00aaff' },
+                { value: 'torque', label: t('torque') || 'Torque', icon: 'Nm', color: '#ff8800' }
+              ].map((dt) => (
+                <button
+                  key={dt.value}
+                  type="button"
+                  onClick={() => setDataType(dt.value)}
+                  style={{
+                    padding: '10px 8px',
+                    borderRadius: '8px',
+                    border: dataType === dt.value ? `2px solid ${dt.color}` : '1px solid var(--border)',
+                    background: dataType === dt.value ? `${dt.color}15` : 'rgba(255, 255, 255, 0.05)',
+                    color: dataType === dt.value ? dt.color : 'var(--text-main)',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span style={{ fontWeight: '600', fontSize: '0.75rem' }}>{dt.icon}</span>
+                  {dt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Apply Mode Selection: ALL or SELECTION */}
           <div style={{ marginBottom: '16px' }}>
             <label style={labelStyle}>{t('applyMode') || 'Apply To'}</label>
@@ -329,9 +412,9 @@ export default function StagePlusPricingDialog({
                 style={{
                   padding: '10px 8px',
                   borderRadius: '8px',
-                  border: applyMode === 'all' ? '2px solid #00aaff' : '1px solid var(--border)',
-                  background: applyMode === 'all' ? 'rgba(0, 170, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                  color: applyMode === 'all' ? '#00aaff' : 'var(--text-main)',
+                  border: applyMode === 'all' ? `2px solid ${dataTypeInfo.color}` : '1px solid var(--border)',
+                  background: applyMode === 'all' ? `${dataTypeInfo.color}15` : 'rgba(255, 255, 255, 0.05)',
+                  color: applyMode === 'all' ? dataTypeInfo.color : 'var(--text-main)',
                   fontSize: '0.85rem',
                   cursor: 'pointer',
                   fontWeight: '600',
@@ -348,9 +431,9 @@ export default function StagePlusPricingDialog({
                 style={{
                   padding: '10px 8px',
                   borderRadius: '8px',
-                  border: applyMode === 'selection' ? '2px solid #00aaff' : '1px solid var(--border)',
-                  background: applyMode === 'selection' ? 'rgba(0, 170, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                  color: applyMode === 'selection' ? '#00aaff' : 'var(--text-main)',
+                  border: applyMode === 'selection' ? `2px solid ${dataTypeInfo.color}` : '1px solid var(--border)',
+                  background: applyMode === 'selection' ? `${dataTypeInfo.color}15` : 'rgba(255, 255, 255, 0.05)',
+                  color: applyMode === 'selection' ? dataTypeInfo.color : 'var(--text-main)',
                   fontSize: '0.85rem',
                   cursor: 'pointer',
                   fontWeight: '600',
@@ -375,9 +458,9 @@ export default function StagePlusPricingDialog({
                     style={{
                       padding: '10px 8px',
                       borderRadius: '8px',
-                      border: level === l ? '2px solid #00aaff' : '1px solid var(--border)',
-                      background: level === l ? 'rgba(0, 170, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                      color: level === l ? '#00aaff' : 'var(--text-main)',
+                      border: level === l ? `2px solid ${dataTypeInfo.color}` : '1px solid var(--border)',
+                      background: level === l ? `${dataTypeInfo.color}15` : 'rgba(255, 255, 255, 0.05)',
+                      color: level === l ? dataTypeInfo.color : 'var(--text-main)',
                       fontSize: '0.85rem',
                       cursor: 'pointer',
                       textTransform: 'capitalize'
@@ -401,13 +484,13 @@ export default function StagePlusPricingDialog({
                   justifyContent: 'center',
                   gap: '10px',
                   padding: '20px',
-                  background: 'rgba(0, 170, 255, 0.05)',
+                  background: `${dataTypeInfo.color}10`,
                   borderRadius: '8px',
                   marginBottom: '16px',
-                  border: '1px solid rgba(0, 170, 255, 0.2)'
+                  border: `1px solid ${dataTypeInfo.color}30`
                 }}>
-                  <Loader2 size={20} color="#00aaff" style={{ animation: 'spin 1s linear infinite' }} />
-                  <span style={{ color: '#00aaff', fontSize: '0.9rem' }}>
+                  <Loader2 size={20} color={dataTypeInfo.color} style={{ animation: 'spin 1s linear infinite' }} />
+                  <span style={{ color: dataTypeInfo.color, fontSize: '0.9rem' }}>
                     {t('loadingData') || 'Loading data...'}
                   </span>
                 </div>
@@ -573,9 +656,11 @@ export default function StagePlusPricingDialog({
             </>
           )}
 
-          {/* Pricing Rules Section */}
+          {/* Update Rules Section */}
           <div style={{ marginBottom: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-            <label style={labelStyle}>{t('pricingRules') || 'Pricing Rules'}</label>
+            <label style={labelStyle}>
+              {t('updateRules') || 'Update Rules'}
+            </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }} className="dialog-grid-2">
               <div>
                 <label style={{ ...labelStyle, fontSize: '0.75rem' }}>Stage 1+ (%)</label>
@@ -605,24 +690,24 @@ export default function StagePlusPricingDialog({
               </div>
             </div>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '8px', marginBottom: 0 }}>
-              {t('stagePlusExplanation') || 'Stage 1+ = Stage 1 price + percentage | Stage 2+ = Stage 2 price + percentage'}
+              {dataTypeInfo.subtitle}
             </p>
           </div>
 
-          {/* Price Preview - Real Prices */}
+          {/* Preview - Real Values */}
           {stage1PlusPercentage && stage2PlusPercentage && !isNaN(parseFloat(stage1PlusPercentage)) && !isNaN(parseFloat(stage2PlusPercentage)) && (
             <div style={{
               marginBottom: '16px',
               padding: '12px',
-              background: 'rgba(0, 170, 255, 0.05)',
+              background: `${dataTypeInfo.color}10`,
               borderRadius: '8px',
-              border: '1px solid rgba(0, 170, 255, 0.2)'
+              border: `1px solid ${dataTypeInfo.color}30`
             }}>
               <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
-                {t('realPricePreview') || 'Real Price Preview:'}
-                {previewPrices.sampleInfo?.engineName && (
+                {t('realPreview') || 'Real Preview:'}
+                {previewData.sampleInfo?.engineName && (
                   <span style={{ fontWeight: '400', marginLeft: '8px', color: 'var(--text-tertiary)' }}>
-                    ({previewPrices.sampleInfo.engineName})
+                    ({previewData.sampleInfo.engineName})
                   </span>
                 )}
               </p>
@@ -630,41 +715,41 @@ export default function StagePlusPricingDialog({
               {loadingPreview ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
                   <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                  {t('loadingPreview') || 'Loading prices...'}
+                  {t('loadingPreview') || 'Loading data...'}
                 </div>
-              ) : previewPrices.hasData ? (
+              ) : previewData.hasData ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
-                  {previewPrices.stage1Price !== null && (
+                  {previewData.stage1Value !== null && (
                     <div>
-                      <div style={{ color: 'var(--text-secondary)' }}>Stage 1: €{previewPrices.stage1Price}</div>
-                      <div style={{ color: '#00aaff', fontWeight: '500' }}>
-                        Stage 1+: €{Math.round(previewPrices.stage1Price * (1 + parseFloat(stage1PlusPercentage) / 100))}
+                      <div style={{ color: 'var(--text-secondary)' }}>Stage 1: {formatValue(previewData.stage1Value)}</div>
+                      <div style={{ color: dataTypeInfo.color, fontWeight: '500' }}>
+                        Stage 1+: {formatValue(Math.round(previewData.stage1Value * (1 + parseFloat(stage1PlusPercentage) / 100)))}
                       </div>
                     </div>
                   )}
-                  {previewPrices.stage2Price !== null && (
+                  {previewData.stage2Value !== null && (
                     <div>
-                      <div style={{ color: 'var(--text-secondary)' }}>Stage 2: €{previewPrices.stage2Price}</div>
-                      <div style={{ color: '#00aaff', fontWeight: '500' }}>
-                        Stage 2+: €{Math.round(previewPrices.stage2Price * (1 + parseFloat(stage2PlusPercentage) / 100))}
+                      <div style={{ color: 'var(--text-secondary)' }}>Stage 2: {formatValue(previewData.stage2Value)}</div>
+                      <div style={{ color: dataTypeInfo.color, fontWeight: '500' }}>
+                        Stage 2+: {formatValue(Math.round(previewData.stage2Value * (1 + parseFloat(stage2PlusPercentage) / 100)))}
                       </div>
                     </div>
                   )}
                 </div>
               ) : (
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
-                  {t('noPreviewData') || 'No price data available for preview. Example:'}
+                  {t('noPreviewDataExample') || 'No data available for preview. Example:'}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
                     <div>
-                      <div style={{ color: 'var(--text-secondary)' }}>Stage 1: €600</div>
-                      <div style={{ color: '#00aaff', fontWeight: '500' }}>
-                        Stage 1+: €{Math.round(600 * (1 + parseFloat(stage1PlusPercentage) / 100))}
+                      <div style={{ color: 'var(--text-secondary)' }}>Stage 1: {formatValue(dataType === 'price' ? 600 : dataType === 'power' ? 300 : 450)}</div>
+                      <div style={{ color: dataTypeInfo.color, fontWeight: '500' }}>
+                        Stage 1+: {formatValue(Math.round((dataType === 'price' ? 600 : dataType === 'power' ? 300 : 450) * (1 + parseFloat(stage1PlusPercentage) / 100)))}
                       </div>
                     </div>
                     <div>
-                      <div style={{ color: 'var(--text-secondary)' }}>Stage 2: €800</div>
-                      <div style={{ color: '#00aaff', fontWeight: '500' }}>
-                        Stage 2+: €{Math.round(800 * (1 + parseFloat(stage2PlusPercentage) / 100))}
+                      <div style={{ color: 'var(--text-secondary)' }}>Stage 2: {formatValue(dataType === 'price' ? 800 : dataType === 'power' ? 350 : 500)}</div>
+                      <div style={{ color: dataTypeInfo.color, fontWeight: '500' }}>
+                        Stage 2+: {formatValue(Math.round((dataType === 'price' ? 800 : dataType === 'power' ? 350 : 500) * (1 + parseFloat(stage2PlusPercentage) / 100)))}
                       </div>
                     </div>
                   </div>
@@ -677,13 +762,13 @@ export default function StagePlusPricingDialog({
           {isValid() && (
             <div style={{
               padding: '12px 16px',
-              background: 'rgba(0, 170, 255, 0.1)',
-              border: '1px solid rgba(0, 170, 255, 0.3)',
+              background: `${dataTypeInfo.color}15`,
+              border: `1px solid ${dataTypeInfo.color}40`,
               borderRadius: '8px',
               marginBottom: '16px'
             }}>
               <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                {t('willUpdatePricesFor') || 'This will update Stage+ prices for'} <strong style={{ color: '#00aaff' }}>{getTargetName()}</strong>
+                {t('willUpdateStagePlusFor') || 'This will update Stage+ values for'} <strong style={{ color: dataTypeInfo.color }}>{getTargetName()}</strong>
               </p>
             </div>
           )}
@@ -708,7 +793,7 @@ export default function StagePlusPricingDialog({
               className="btn"
               style={{
                 flex: 1,
-                background: isValid() ? '#00aaff' : 'rgba(0, 170, 255, 0.3)',
+                background: isValid() ? dataTypeInfo.color : `${dataTypeInfo.color}50`,
                 color: isValid() ? '#1a1a1a' : '#666',
                 border: 'none',
                 fontWeight: '600',
@@ -725,7 +810,7 @@ export default function StagePlusPricingDialog({
                   {t('applying') || 'Applying...'}
                 </>
               ) : (
-                t('applyPricing') || 'Apply Pricing'
+                t('applyUpdate') || 'Apply Update'
               )}
             </button>
           </div>

@@ -61,6 +61,7 @@ export default function AdminPage() {
   const [confirmDialog, setConfirmDialog] = useState({ show: false, message: '', onConfirm: null, confirmText: 'Confirm' });
   const [moveDialog, setMoveDialog] = useState({ show: false, itemType: '', itemId: null, itemName: '', targets: [] });
   const [addEngineDialog, setAddEngineDialog] = useState({ show: false });
+  const [addBrandDialog, setAddBrandDialog] = useState({ show: false });
   const [addGroupDialog, setAddGroupDialog] = useState({ show: false });
   const [editGroupDialog, setEditGroupDialog] = useState({ show: false, groupData: null });
   const [bulkUpdateDialog, setBulkUpdateDialog] = useState({ show: false });
@@ -823,6 +824,39 @@ export default function AdminPage() {
     }
   };
 
+  // Add new brand
+  const addBrand = () => {
+    setEditDialog({
+      show: true,
+      title: 'Add New Brand',
+      value: '',
+      onConfirm: (name) => performAddBrand(name)
+    });
+  };
+
+  const performAddBrand = async (name) => {
+    if (!name || name.trim() === '') return;
+
+    try {
+      const response = await fetchAPI('admin/brand', {
+        method: 'POST',
+        isProtected: true,
+        body: JSON.stringify({ name: name.trim() }),
+      });
+
+      // Add to local state
+      const newBrand = response.brand;
+      setBrands([...brands, newBrand]);
+
+      setDataMessage({ type: 'success', text: 'Brand added successfully' });
+      showToast('Brand added successfully', 'success');
+      setEditDialog({ show: false, title: '', value: '', onConfirm: null });
+    } catch (error) {
+      setDataMessage({ type: 'error', text: 'Failed to add brand: ' + error.message });
+      showToast('Failed to add brand: ' + error.message, 'error');
+    }
+  };
+
   // Add new group
   const addGroup = () => {
     if (!selectedBrand) {
@@ -1309,8 +1343,8 @@ export default function AdminPage() {
     loadAllDataForBulkUpdate();
   };
 
-  // Bulk update prices
-  const performBulkPriceUpdate = async ({ level, targetId, groupId, updateType, priceData }) => {
+  // Bulk update prices/power/torque
+  const performBulkPriceUpdate = async ({ level, targetId, groupId, dataType = 'price', updateType, updateData }) => {
     if (operationInProgress) {
       showToast('Another operation is in progress. Please wait.', 'warning');
       return;
@@ -1320,7 +1354,7 @@ export default function AdminPage() {
     startOperation();
 
     try {
-      const payload = { level, targetId, updateType, priceData };
+      const payload = { level, targetId, dataType, updateType, updateData };
       if (groupId) {
         payload.groupId = groupId;
       }
@@ -1331,20 +1365,21 @@ export default function AdminPage() {
         body: JSON.stringify(payload)
       });
 
-      showToast(`Updated ${result.updatedCount} stage prices`, 'success');
-      setDataMessage({ type: 'success', text: `Updated ${result.updatedCount} stage prices` });
+      const dataLabel = dataType === 'power' ? 'power values' : dataType === 'torque' ? 'torque values' : 'prices';
+      showToast(`Updated ${result.updatedCount} stage ${dataLabel}`, 'success');
+      setDataMessage({ type: 'success', text: `Updated ${result.updatedCount} stage ${dataLabel}` });
     } catch (error) {
-      console.error('Bulk price update failed:', error);
-      showToast('Failed to update prices: ' + error.message, 'error');
-      setDataMessage({ type: 'error', text: 'Failed to update prices: ' + error.message });
+      console.error('Bulk update failed:', error);
+      showToast('Failed to update: ' + error.message, 'error');
+      setDataMessage({ type: 'error', text: 'Failed to update: ' + error.message });
     } finally {
       setOperationInProgress(false);
       endOperation();
     }
   };
 
-  // Apply Stage+ pricing rule
-  const applyStagePlusPricing = async ({ level, targetId, groupId, stage1PlusPercentage, stage2PlusPercentage }) => {
+  // Apply Stage+ pricing/power/torque rule
+  const applyStagePlusPricing = async ({ level, targetId, groupId, stage1PlusPercentage, stage2PlusPercentage, dataType = 'price' }) => {
     if (operationInProgress) {
       showToast('Another operation is in progress. Please wait.', 'warning');
       return;
@@ -1354,7 +1389,7 @@ export default function AdminPage() {
     startOperation();
 
     try {
-      const payload = { stage1PlusPercentage, stage2PlusPercentage };
+      const payload = { stage1PlusPercentage, stage2PlusPercentage, dataType };
 
       // Add level and targetId if provided
       if (level) {
@@ -1373,17 +1408,19 @@ export default function AdminPage() {
         body: JSON.stringify(payload)
       });
 
-      showToast(`Updated ${result.updatedCount} Stage+ prices (Stage 1+: +${stage1PlusPercentage}%, Stage 2+: +${stage2PlusPercentage}%)`, 'success');
-      setDataMessage({ type: 'success', text: `Updated ${result.updatedCount} Stage+ prices` });
+      // Dynamic message based on dataType
+      const dataTypeLabel = dataType === 'power' ? 'power values' : dataType === 'torque' ? 'torque values' : 'prices';
+      showToast(`Updated ${result.updatedCount} Stage+ ${dataTypeLabel} (Stage 1+: +${stage1PlusPercentage}%, Stage 2+: +${stage2PlusPercentage}%)`, 'success');
+      setDataMessage({ type: 'success', text: `Updated ${result.updatedCount} Stage+ ${dataTypeLabel}` });
 
       // Reload data if visual editor is open
       if (showVisualEditor) {
         await loadBrands();
       }
     } catch (error) {
-      console.error('Stage+ pricing failed:', error);
-      showToast('Failed to apply Stage+ pricing: ' + error.message, 'error');
-      setDataMessage({ type: 'error', text: 'Failed to apply Stage+ pricing: ' + error.message });
+      console.error('Stage+ update failed:', error);
+      showToast('Failed to apply Stage+ update: ' + error.message, 'error');
+      setDataMessage({ type: 'error', text: 'Failed to apply Stage+ update: ' + error.message });
     } finally {
       setOperationInProgress(false);
       endOperation();
@@ -1468,6 +1505,7 @@ export default function AdminPage() {
           renameModel={renameModel}
           renameType={renameType}
           renameEngine={renameEngine}
+          addBrand={addBrand}
           addGroup={addGroup}
           addModel={addModel}
           addType={addType}
@@ -2066,7 +2104,7 @@ function VisualEditorSection({
   dataMessage,
   deleteBrand, deleteGroup, deleteModel, deleteType, deleteEngine,
   renameBrand, renameGroup, renameModel, renameType, renameEngine,
-  addGroup, addModel, addType, addEngine,
+  addBrand, addGroup, addModel, addType, addEngine,
   openMoveModelDialog, openMoveTypeDialog, openMoveEngineDialog,
   selectedBrand, handleBrandSelect,
   selectedGroup, handleGroupSelect,
@@ -2179,7 +2217,7 @@ function VisualEditorSection({
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
                     <DollarSign size={18} />
-                    <span>{t('bulkPrices') || 'Bulk Prices'}</span>
+                    <span>{t('bulkUpdate') || 'Bulk Update'}</span>
                   </button>
                   <button
                     onClick={(e) => {
@@ -2274,9 +2312,27 @@ function VisualEditorSection({
             <div className="admin-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '16px' }}>
               {/* Brands List */}
               <div style={{ background: 'rgba(50, 55, 60, 0.3)', borderRadius: '8px', padding: '16px' }}>
-                <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', color: 'var(--primary)' }}>
-                  {t('brands') || 'Brands'} ({brands?.length || 0})
-                </h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--primary)' }}>
+                    {t('brands') || 'Brands'} ({brands?.length || 0})
+                  </h4>
+                  <button
+                    onClick={addBrand}
+                    style={{
+                      background: 'var(--primary)',
+                      border: 'none',
+                      color: '#1a1a1a',
+                      cursor: 'pointer',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold'
+                    }}
+                    title={t('addNewBrand') || 'Add new brand'}
+                  >
+                    + {t('addBrand') || 'Add Brand'}
+                  </button>
+                </div>
                 <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
                   {brands?.map(brand => (
                     <div

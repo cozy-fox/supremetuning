@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DollarSign, ChevronDown, Loader2 } from 'lucide-react';
+import { DollarSign, Zap, Gauge, ChevronDown, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/components/LanguageContext';
 
 export default function BulkUpdateDialog({
@@ -23,20 +23,23 @@ export default function BulkUpdateDialog({
   const [selectedModel, setSelectedModel] = useState('');
   const [selectedGeneration, setSelectedGeneration] = useState('');
   const [selectedEngine, setSelectedEngine] = useState('');
-  
+
+  // Data type to update: 'price', 'power', 'torque'
+  const [dataType, setDataType] = useState('price');
+
   const [updateType, setUpdateType] = useState('percentage');
   const [operation, setOperation] = useState('increase');
   const [percentageValue, setPercentageValue] = useState('');
-  const [absolutePrice, setAbsolutePrice] = useState('');
-  
-  // Individual stage prices for absolute mode
-  const [stagePrices, setStagePrices] = useState({
+  const [absoluteValue, setAbsoluteValue] = useState('');
+
+  // Individual stage values for absolute mode
+  const [stageValues, setStageValues] = useState({
     stage1: '',
     stage1plus: '',
     stage2: '',
     stage2plus: ''
   });
-  
+
   const [isUpdating, setIsUpdating] = useState(false);
 
   const { t } = useLanguage();
@@ -50,11 +53,12 @@ export default function BulkUpdateDialog({
       setSelectedModel('');
       setSelectedGeneration('');
       setSelectedEngine('');
+      setDataType('price');
       setUpdateType('percentage');
       setOperation('increase');
       setPercentageValue('');
-      setAbsolutePrice('');
-      setStagePrices({ stage1: '', stage1plus: '', stage2: '', stage2plus: '' });
+      setAbsoluteValue('');
+      setStageValues({ stage1: '', stage1plus: '', stage2: '', stage2plus: '' });
     }
   }, [show, initialLevel, initialTargetId, brands]);
 
@@ -111,32 +115,32 @@ export default function BulkUpdateDialog({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const targetId = getTargetId();
     if (!targetId) return;
 
     setIsUpdating(true);
-    
+
     try {
-      let priceData = {};
-      
+      let updateData = {};
+
       if (updateType === 'percentage') {
-        priceData = {
+        updateData = {
           percentage: parseFloat(percentageValue),
           operation
         };
       } else if (updateType === 'absolute') {
-        priceData = {
-          prices: {
-            stage1: stagePrices.stage1 ? parseInt(stagePrices.stage1) : undefined,
-            stage1plus: stagePrices.stage1plus ? parseInt(stagePrices.stage1plus) : undefined,
-            stage2: stagePrices.stage2 ? parseInt(stagePrices.stage2) : undefined,
-            stage2plus: stagePrices.stage2plus ? parseInt(stagePrices.stage2plus) : undefined
+        updateData = {
+          values: {
+            stage1: stageValues.stage1 ? parseInt(stageValues.stage1) : undefined,
+            stage1plus: stageValues.stage1plus ? parseInt(stageValues.stage1plus) : undefined,
+            stage2: stageValues.stage2 ? parseInt(stageValues.stage2) : undefined,
+            stage2plus: stageValues.stage2plus ? parseInt(stageValues.stage2plus) : undefined
           }
         };
       } else if (updateType === 'fixed') {
-        priceData = {
-          price: parseInt(absolutePrice)
+        updateData = {
+          value: parseInt(absoluteValue)
         };
       }
 
@@ -144,8 +148,9 @@ export default function BulkUpdateDialog({
       const updatePayload = {
         level,
         targetId: parseInt(targetId),
+        dataType, // 'price', 'power', or 'torque'
         updateType,
-        priceData
+        updateData
       };
 
       // Add groupId filter if a group is selected
@@ -154,11 +159,12 @@ export default function BulkUpdateDialog({
         console.log('🔍 Bulk update with group filter:', {
           level,
           targetId,
+          dataType,
           groupId: selectedGroup,
           groupName: groups.find(g => g.id === parseInt(selectedGroup))?.name
         });
       } else {
-        console.log('🔍 Bulk update without group filter:', { level, targetId });
+        console.log('🔍 Bulk update without group filter:', { level, targetId, dataType });
       }
 
       await onUpdate(updatePayload);
@@ -178,12 +184,47 @@ export default function BulkUpdateDialog({
     if (updateType === 'percentage') {
       return percentageValue && !isNaN(parseFloat(percentageValue));
     } else if (updateType === 'fixed') {
-      return absolutePrice && !isNaN(parseInt(absolutePrice));
+      return absoluteValue && !isNaN(parseInt(absoluteValue));
     } else if (updateType === 'absolute') {
-      return Object.values(stagePrices).some(p => p && !isNaN(parseInt(p)));
+      return Object.values(stageValues).some(v => v && !isNaN(parseInt(v)));
     }
     return false;
   };
+
+  // Get data type specific labels and units
+  const getDataTypeInfo = () => {
+    switch (dataType) {
+      case 'power':
+        return {
+          title: t('bulkPowerUpdate') || 'Bulk Power Update',
+          subtitle: t('updatePowerMultiple') || 'Update tuned HP for multiple stages at once',
+          unit: 'HP',
+          icon: <Zap size={32} color="#00aaff" />,
+          color: '#00aaff',
+          fixedLabel: t('setAllPowerTo') || 'Set All Tuned HP To'
+        };
+      case 'torque':
+        return {
+          title: t('bulkTorqueUpdate') || 'Bulk Torque Update',
+          subtitle: t('updateTorqueMultiple') || 'Update tuned Nm for multiple stages at once',
+          unit: 'Nm',
+          icon: <Gauge size={32} color="#ff8800" />,
+          color: '#ff8800',
+          fixedLabel: t('setAllTorqueTo') || 'Set All Tuned Nm To'
+        };
+      default:
+        return {
+          title: t('bulkPriceUpdate') || 'Bulk Price Update',
+          subtitle: t('updatePricesMultiple') || 'Update prices for multiple stages at once',
+          unit: '€',
+          icon: <DollarSign size={32} color="#00ff88" />,
+          color: '#00ff88',
+          fixedLabel: t('setAllPricesTo') || 'Set All Prices To (€)'
+        };
+    }
+  };
+
+  const dataTypeInfo = getDataTypeInfo();
 
   const selectStyle = {
     width: '100%',
@@ -250,7 +291,7 @@ export default function BulkUpdateDialog({
           <div
             className="dialog-icon"
             style={{
-              background: 'rgba(0, 255, 136, 0.1)',
+              background: `${dataTypeInfo.color}15`,
               borderRadius: '50%',
               width: '64px',
               height: '64px',
@@ -260,15 +301,49 @@ export default function BulkUpdateDialog({
               margin: '0 auto 16px'
             }}
           >
-            <DollarSign size={32} color="#00ff88" />
+            {dataTypeInfo.icon}
           </div>
-          <h3 style={{ margin: '0 0 8px 0' }}>{t('bulkPriceUpdate') || 'Bulk Price Update'}</h3>
+          <h3 style={{ margin: '0 0 8px 0' }}>{dataTypeInfo.title}</h3>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>
-            {t('updatePricesMultiple') || 'Update prices for multiple stages at once'}
+            {dataTypeInfo.subtitle}
           </p>
         </div>
 
         <form onSubmit={handleSubmit}>
+          {/* Data Type Selection */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>{t('dataType') || 'Data Type'}</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }} className="dialog-grid-3">
+              {[
+                { value: 'price', label: t('price') || 'Price', icon: '€', color: '#00ff88' },
+                { value: 'power', label: t('power') || 'Power', icon: 'HP', color: '#00aaff' },
+                { value: 'torque', label: t('torque') || 'Torque', icon: 'Nm', color: '#ff8800' }
+              ].map((dt) => (
+                <button
+                  key={dt.value}
+                  type="button"
+                  onClick={() => setDataType(dt.value)}
+                  style={{
+                    padding: '10px 8px',
+                    borderRadius: '8px',
+                    border: dataType === dt.value ? `2px solid ${dt.color}` : '1px solid var(--border)',
+                    background: dataType === dt.value ? `${dt.color}15` : 'rgba(255, 255, 255, 0.05)',
+                    color: dataType === dt.value ? dt.color : 'var(--text-main)',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span style={{ fontWeight: '600', fontSize: '0.75rem' }}>{dt.icon}</span>
+                  {dt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Level Selection */}
           <div style={{ marginBottom: '16px' }}>
             <label style={labelStyle}>{t('updateLevel') || 'Update Level'}</label>
@@ -281,9 +356,9 @@ export default function BulkUpdateDialog({
                   style={{
                     padding: '10px 8px',
                     borderRadius: '8px',
-                    border: level === l ? '2px solid #00ff88' : '1px solid var(--border)',
-                    background: level === l ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                    color: level === l ? '#00ff88' : 'var(--text-main)',
+                    border: level === l ? `2px solid ${dataTypeInfo.color}` : '1px solid var(--border)',
+                    background: level === l ? `${dataTypeInfo.color}15` : 'rgba(255, 255, 255, 0.05)',
+                    color: level === l ? dataTypeInfo.color : 'var(--text-main)',
                     fontSize: '0.85rem',
                     cursor: 'pointer',
                     textTransform: 'capitalize'
@@ -480,7 +555,7 @@ export default function BulkUpdateDialog({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }} className="dialog-grid-3">
               {[
                 { value: 'percentage', label: t('percentage') || 'Percentage' },
-                { value: 'fixed', label: t('fixedPrice') || 'Fixed Price' },
+                { value: 'fixed', label: dataType === 'price' ? (t('fixedPrice') || 'Fixed Price') : (t('fixedValue') || 'Fixed Value') },
                 { value: 'absolute', label: t('perStage') || 'Per Stage' }
               ].map((type) => (
                 <button
@@ -490,9 +565,9 @@ export default function BulkUpdateDialog({
                   style={{
                     padding: '10px 8px',
                     borderRadius: '8px',
-                    border: updateType === type.value ? '2px solid #00ff88' : '1px solid var(--border)',
-                    background: updateType === type.value ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                    color: updateType === type.value ? '#00ff88' : 'var(--text-main)',
+                    border: updateType === type.value ? `2px solid ${dataTypeInfo.color}` : '1px solid var(--border)',
+                    background: updateType === type.value ? `${dataTypeInfo.color}15` : 'rgba(255, 255, 255, 0.05)',
+                    color: updateType === type.value ? dataTypeInfo.color : 'var(--text-main)',
                     fontSize: '0.85rem',
                     cursor: 'pointer'
                   }}
@@ -535,33 +610,40 @@ export default function BulkUpdateDialog({
             </div>
           )}
 
-          {/* Fixed Price Update */}
+          {/* Fixed Value Update */}
           {updateType === 'fixed' && (
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>{t('setAllPricesTo') || 'Set All Prices To (€)'}</label>
+              <label style={labelStyle}>{dataTypeInfo.fixedLabel}</label>
               <input
                 type="number"
-                value={absolutePrice}
-                onChange={(e) => setAbsolutePrice(e.target.value)}
-                placeholder="e.g. 500"
+                value={absoluteValue}
+                onChange={(e) => setAbsoluteValue(e.target.value)}
+                placeholder={dataType === 'price' ? 'e.g. 500' : dataType === 'power' ? 'e.g. 300' : 'e.g. 450'}
                 style={inputStyle}
                 min="0"
               />
             </div>
           )}
 
-          {/* Per-Stage Price Update */}
+          {/* Per-Stage Value Update */}
           {updateType === 'absolute' && (
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>{t('stagePricesLeaveEmpty') || 'Stage Prices (€) - Leave empty to skip'}</label>
+              <label style={labelStyle}>
+                {dataType === 'price'
+                  ? (t('stagePricesLeaveEmpty') || 'Stage Prices (€) - Leave empty to skip')
+                  : dataType === 'power'
+                  ? (t('stagePowerLeaveEmpty') || 'Stage Power (HP) - Leave empty to skip')
+                  : (t('stageTorqueLeaveEmpty') || 'Stage Torque (Nm) - Leave empty to skip')
+                }
+              </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }} className="dialog-grid-2">
                 <div>
                   <label style={{ ...labelStyle, fontSize: '0.75rem' }}>Stage 1</label>
                   <input
                     type="number"
-                    value={stagePrices.stage1}
-                    onChange={(e) => setStagePrices(p => ({ ...p, stage1: e.target.value }))}
-                    placeholder="Price"
+                    value={stageValues.stage1}
+                    onChange={(e) => setStageValues(v => ({ ...v, stage1: e.target.value }))}
+                    placeholder={dataTypeInfo.unit}
                     style={inputStyle}
                     min="0"
                   />
@@ -570,9 +652,9 @@ export default function BulkUpdateDialog({
                   <label style={{ ...labelStyle, fontSize: '0.75rem' }}>Stage 1+</label>
                   <input
                     type="number"
-                    value={stagePrices.stage1plus}
-                    onChange={(e) => setStagePrices(p => ({ ...p, stage1plus: e.target.value }))}
-                    placeholder="Price"
+                    value={stageValues.stage1plus}
+                    onChange={(e) => setStageValues(v => ({ ...v, stage1plus: e.target.value }))}
+                    placeholder={dataTypeInfo.unit}
                     style={inputStyle}
                     min="0"
                   />
@@ -581,9 +663,9 @@ export default function BulkUpdateDialog({
                   <label style={{ ...labelStyle, fontSize: '0.75rem' }}>Stage 2</label>
                   <input
                     type="number"
-                    value={stagePrices.stage2}
-                    onChange={(e) => setStagePrices(p => ({ ...p, stage2: e.target.value }))}
-                    placeholder="Price"
+                    value={stageValues.stage2}
+                    onChange={(e) => setStageValues(v => ({ ...v, stage2: e.target.value }))}
+                    placeholder={dataTypeInfo.unit}
                     style={inputStyle}
                     min="0"
                   />
@@ -592,9 +674,9 @@ export default function BulkUpdateDialog({
                   <label style={{ ...labelStyle, fontSize: '0.75rem' }}>Stage 2+</label>
                   <input
                     type="number"
-                    value={stagePrices.stage2plus}
-                    onChange={(e) => setStagePrices(p => ({ ...p, stage2plus: e.target.value }))}
-                    placeholder="Price"
+                    value={stageValues.stage2plus}
+                    onChange={(e) => setStageValues(v => ({ ...v, stage2plus: e.target.value }))}
+                    placeholder={dataTypeInfo.unit}
                     style={inputStyle}
                     min="0"
                   />
@@ -608,12 +690,17 @@ export default function BulkUpdateDialog({
             <div style={{
               marginBottom: '20px',
               padding: '12px',
-              background: 'rgba(0, 255, 136, 0.05)',
+              background: `${dataTypeInfo.color}10`,
               borderRadius: '8px',
-              border: '1px solid rgba(0, 255, 136, 0.2)'
+              border: `1px solid ${dataTypeInfo.color}30`
             }}>
               <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                {t('willUpdatePricesFor') || 'This will update prices for all stages under'} <strong style={{ color: '#00ff88' }}>{getTargetName()}</strong>
+                {dataType === 'price'
+                  ? (t('willUpdatePricesFor') || 'This will update prices for all stages under')
+                  : dataType === 'power'
+                  ? (t('willUpdatePowerFor') || 'This will update tuned HP for all stages under')
+                  : (t('willUpdateTorqueFor') || 'This will update tuned Nm for all stages under')
+                } <strong style={{ color: dataTypeInfo.color }}>{getTargetName()}</strong>
               </p>
             </div>
           )}
@@ -638,7 +725,7 @@ export default function BulkUpdateDialog({
               className="btn"
               style={{
                 flex: 1,
-                background: isValid() ? '#00ff88' : 'rgba(0, 255, 136, 0.3)',
+                background: isValid() ? dataTypeInfo.color : `${dataTypeInfo.color}50`,
                 color: '#1a1a1a',
                 border: 'none',
                 fontWeight: '600',
@@ -655,7 +742,11 @@ export default function BulkUpdateDialog({
                   {t('updating') || 'Updating...'}
                 </>
               ) : (
-                t('updatePrices') || 'Update Prices'
+                dataType === 'price'
+                  ? (t('updatePrices') || 'Update Prices')
+                  : dataType === 'power'
+                  ? (t('updatePower') || 'Update Power')
+                  : (t('updateTorque') || 'Update Torque')
               )}
             </button>
           </div>

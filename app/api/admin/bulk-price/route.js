@@ -3,13 +3,18 @@ import { requireAdmin } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
 /**
- * PUT /api/admin/bulk-price - Bulk update prices for stages
- * 
- * Supports updating prices at different levels:
+ * PUT /api/admin/bulk-price - Bulk update prices, power, or torque for stages
+ *
+ * Supports updating at different levels:
  * - Brand level: Update all stages for all engines under a brand
  * - Model level: Update all stages for all engines under a model
  * - Generation level: Update all stages for all engines under a generation (type)
  * - Engine level: Update all stages for a specific engine
+ *
+ * Supports different data types:
+ * - price: Update stage prices
+ * - power: Update tunedHp (and recalculate gainHp)
+ * - torque: Update tunedNm (and recalculate gainNm)
  */
 export async function PUT(request) {
   const authResult = requireAdmin(request);
@@ -25,9 +30,15 @@ export async function PUT(request) {
       level,      // 'brand', 'model', 'generation', 'engine'
       targetId,   // ID of the target (brandId, modelId, typeId, or engineId)
       groupId,    // Optional: Filter by group (only for brand/model level)
-      priceData,  // { stageName: price } or { percentage: number, operation: 'increase'|'decrease'|'set' }
-      updateType  // 'absolute' or 'percentage'
+      dataType = 'price',  // 'price', 'power', or 'torque'
+      updateData, // { values: {...}, percentage, operation, value }
+      updateType, // 'absolute', 'percentage', or 'fixed'
+      // Legacy support for old priceData format
+      priceData
     } = await request.json();
+
+    // Support legacy priceData format (backwards compatibility)
+    const effectiveUpdateData = updateData || priceData;
 
     if (!level || !targetId) {
       return NextResponse.json(
@@ -104,17 +115,58 @@ export async function PUT(request) {
     let updatedCount = 0;
     const bulkOperations = [];
 
-    if (updateType === 'absolute' && priceData.prices) {
-      // Build bulk operations for absolute price updates
+    // Determine which field to update based on dataType
+    const getFieldName = () => {
+      switch (dataType) {
+        case 'power': return 'tunedHp';
+        case 'torque': return 'tunedNm';
+        default: return 'price';
+      }
+    };
+
+    const getGainFieldName = () => {
+      switch (dataType) {
+        case 'power': return 'gainHp';
+        case 'torque': return 'gainNm';
+        default: return null;
+      }
+    };
+
+    const getStockFieldName = () => {
+      switch (dataType) {
+        case 'power': return 'stockHp';
+        case 'torque': return 'stockNm';
+        default: return null;
+      }
+    };
+
+    const fieldName = getFieldName();
+    const gainFieldName = getGainFieldName();
+    const stockFieldName = getStockFieldName();
+
+    // Get values from effectiveUpdateData (support both new and legacy formats)
+    const values = effectiveUpdateData?.values || effectiveUpdateData?.prices;
+    const fixedValue = effectiveUpdateData?.value ?? effectiveUpdateData?.price;
+
+    if (updateType === 'absolute' && values) {
+      // Build bulk operations for absolute value updates
       for (const stage of stages) {
         const stageName = stage.stageName?.toLowerCase().replace(/\s+/g, '').replace(/\+/g, 'plus');
-        const price = priceData.prices[stageName] ?? priceData.prices[stage.stageName];
+        const newValue = values[stageName] ?? values[stage.stageName];
 
-        if (price !== undefined && price !== null) {
+        if (newValue !== undefined && newValue !== null) {
+          const updateFields = { [fieldName]: parseInt(newValue) };
+
+          // Calculate gain for power/torque
+          if (gainFieldName && stockFieldName) {
+            const stockValue = stage[stockFieldName] || 0;
+            updateFields[gainFieldName] = parseInt(newValue) - stockValue;
+          }
+
           bulkOperations.push({
             updateOne: {
               filter: { id: stage.id },
-              update: { $set: { price: parseInt(price) } }
+              update: { $set: updateFields }
             }
           });
           updatedCount++;
@@ -122,34 +174,63 @@ export async function PUT(request) {
       }
     } else if (updateType === 'percentage') {
       // Build bulk operations for percentage updates
-      const { percentage, operation } = priceData;
+      const { percentage, operation } = effectiveUpdateData;
 
       for (const stage of stages) {
-        let newPrice = stage.price || 0;
+        let currentValue = stage[fieldName] || 0;
+        let newValue = currentValue;
 
         if (operation === 'increase') {
-          newPrice = Math.round(newPrice * (1 + percentage / 100));
+          newValue = Math.round(currentValue * (1 + percentage / 100));
         } else if (operation === 'decrease') {
-          newPrice = Math.round(newPrice * (1 - percentage / 100));
+          newValue = Math.round(currentValue * (1 - percentage / 100));
         } else if (operation === 'set') {
-          newPrice = parseInt(percentage); // In this case, percentage is actually the absolute value
+          newValue = parseInt(percentage);
+        }
+
+        const updateFields = { [fieldName]: Math.max(0, newValue) };
+
+        // Calculate gain for power/torque
+        if (gainFieldName && stockFieldName) {
+          const stockValue = stage[stockFieldName] || 0;
+          updateFields[gainFieldName] = Math.max(0, newValue) - stockValue;
         }
 
         bulkOperations.push({
           updateOne: {
             filter: { id: stage.id },
-            update: { $set: { price: Math.max(0, newPrice) } }
+            update: { $set: updateFields }
           }
         });
         updatedCount++;
       }
-    } else if (updateType === 'fixed' && priceData.price !== undefined) {
-      // Set all stages to a fixed price using updateMany (already efficient)
-      await stagesCollection.updateMany(
-        { engineId: { $in: engineIds } },
-        { $set: { price: parseInt(priceData.price) } }
-      );
-      updatedCount = stages.length;
+    } else if (updateType === 'fixed' && fixedValue !== undefined) {
+      // Set all stages to a fixed value
+      // For power/torque, we need to calculate gains individually
+      if (gainFieldName && stockFieldName) {
+        for (const stage of stages) {
+          const stockValue = stage[stockFieldName] || 0;
+          const updateFields = {
+            [fieldName]: parseInt(fixedValue),
+            [gainFieldName]: parseInt(fixedValue) - stockValue
+          };
+
+          bulkOperations.push({
+            updateOne: {
+              filter: { id: stage.id },
+              update: { $set: updateFields }
+            }
+          });
+          updatedCount++;
+        }
+      } else {
+        // For price, use updateMany (more efficient)
+        await stagesCollection.updateMany(
+          { engineId: { $in: engineIds } },
+          { $set: { [fieldName]: parseInt(fixedValue) } }
+        );
+        updatedCount = stages.length;
+      }
     }
 
     // Execute bulk operations in a single database call
@@ -158,19 +239,21 @@ export async function PUT(request) {
       console.log(`✅ Bulk write complete: ${result.modifiedCount} stages modified`);
     }
 
-    console.log(`✅ Bulk update complete: ${updatedCount} stages updated across ${engineIds.length} engines`);
+    const dataTypeLabel = dataType === 'power' ? 'power (HP)' : dataType === 'torque' ? 'torque (Nm)' : 'prices';
+    console.log(`✅ Bulk update complete: ${updatedCount} stage ${dataTypeLabel} updated across ${engineIds.length} engines`);
 
     return NextResponse.json({
-      message: `Successfully updated ${updatedCount} stage prices across ${engineIds.length} engines`,
+      message: `Successfully updated ${updatedCount} stage ${dataTypeLabel} across ${engineIds.length} engines`,
       updatedCount,
       totalStages: stages.length,
       engineCount: engineIds.length,
+      dataType,
       groupFiltered: !!groupId
     });
   } catch (error) {
-    console.error('❌ Bulk price update error:', error);
+    console.error('❌ Bulk update error:', error);
     return NextResponse.json(
-      { message: 'Failed to update prices', error: error.message },
+      { message: 'Failed to update data', error: error.message },
       { status: 500 }
     );
   }
