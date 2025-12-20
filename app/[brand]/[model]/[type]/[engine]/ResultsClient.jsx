@@ -432,6 +432,30 @@ function StageSection({ stage, stageIndex, vehicleInfo, isStage2, isAdmin, fetch
             </div>
           </div>
 
+          {/* Gearbox Tuning Notice - Mandatory for all vehicles */}
+          <div className="gearbox-tuning-notice" style={{
+            marginTop: '16px',
+            padding: '14px',
+            background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.12) 0%, rgba(0, 200, 100, 0.08) 100%)',
+            border: '1px solid rgba(0, 255, 136, 0.35)',
+            borderRadius: '8px'
+          }}>
+            <h4 style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#00ff88',
+              marginBottom: '6px',
+              fontSize: '13px',
+              fontWeight: '600'
+            }}>
+              <Zap size={16} /> {t('gearboxTuningIncluded')}
+            </h4>
+            <p style={{ fontSize: '12px', color: '#b0b0b0', lineHeight: '1.5', margin: 0 }}>
+              {t('gearboxTuningDescription')}
+            </p>
+          </div>
+
           {/* Action Buttons */}
           {/* <div className="action-buttons">
             <a href="tel:+31619828216" className="btn-contact">

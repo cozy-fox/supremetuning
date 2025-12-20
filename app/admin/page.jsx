@@ -8,7 +8,7 @@ import { useProgress } from '@/components/ProgressContext';
 import Header from '@/components/Header';
 import {
   Shield, Key, RefreshCw, AlertCircle, Check, ChevronDown, ChevronUp,
-  Trash2, Car, Edit2, Plus, MoveRight, DollarSign, Eye, EyeOff
+  Trash2, Car, Edit2, Plus, MoveRight, DollarSign, Eye, EyeOff, Percent
 } from 'lucide-react';
 import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -17,6 +17,7 @@ import AddEngineDialog from '@/components/AddEngineDialog';
 import AddGroupDialog from '@/components/AddGroupDialog';
 import EditGroupDialog from '@/components/EditGroupDialog';
 import BulkUpdateDialog from '@/components/BulkUpdateDialog';
+import StagePlusPricingDialog from '@/components/StagePlusPricingDialog';
 import BackupSection from '@/components/BackupSection';
 
 export default function AdminPage() {
@@ -62,6 +63,7 @@ export default function AdminPage() {
   const [addGroupDialog, setAddGroupDialog] = useState({ show: false });
   const [editGroupDialog, setEditGroupDialog] = useState({ show: false, groupData: null });
   const [bulkUpdateDialog, setBulkUpdateDialog] = useState({ show: false });
+  const [stagePlusPricingDialog, setStagePlusPricingDialog] = useState(false);
 
   // Bulk update - all data (not filtered by selection)
   const [allGroups, setAllGroups] = useState([]);
@@ -1336,6 +1338,40 @@ export default function AdminPage() {
     }
   };
 
+  // Apply Stage+ pricing rule
+  const applyStagePlusPricing = async ({ stage1PlusPercentage, stage2PlusPercentage }) => {
+    if (operationInProgress) {
+      showToast('Another operation is in progress. Please wait.', 'warning');
+      return;
+    }
+
+    setOperationInProgress(true);
+    startOperation();
+
+    try {
+      const result = await fetchAPI('admin/stage-plus-pricing', {
+        method: 'PUT',
+        isProtected: true,
+        body: JSON.stringify({ stage1PlusPercentage, stage2PlusPercentage })
+      });
+
+      showToast(`Updated ${result.updatedCount} Stage+ prices (Stage 1+: +${stage1PlusPercentage}%, Stage 2+: +${stage2PlusPercentage}%)`, 'success');
+      setDataMessage({ type: 'success', text: `Updated ${result.updatedCount} Stage+ prices` });
+
+      // Reload data if visual editor is open
+      if (showVisualEditor) {
+        await loadVisualEditorData();
+      }
+    } catch (error) {
+      console.error('Stage+ pricing failed:', error);
+      showToast('Failed to apply Stage+ pricing: ' + error.message, 'error');
+      setDataMessage({ type: 'error', text: 'Failed to apply Stage+ pricing: ' + error.message });
+    } finally {
+      setOperationInProgress(false);
+      endOperation();
+    }
+  };
+
   if (isLoading) {
     return (
       <>
@@ -1431,6 +1467,7 @@ export default function AdminPage() {
           selectedEngine={selectedEngine}
           handleEngineSelect={handleEngineSelect}
           openBulkUpdate={openBulkUpdateDialog}
+          setStagePlusPricingDialog={setStagePlusPricingDialog}
         />
 
         {/* Data Editor Section
@@ -1561,6 +1598,13 @@ export default function AdminPage() {
         models={allModels}
         generations={allTypes}
         engines={allEngines}
+      />
+
+      {/* Stage+ Pricing Dialog */}
+      <StagePlusPricingDialog
+        show={stagePlusPricingDialog}
+        onClose={() => setStagePlusPricingDialog(false)}
+        onApply={applyStagePlusPricing}
       />
 
       {/* Global Operation Loading Overlay */}
@@ -2003,7 +2047,8 @@ function VisualEditorSection({
   selectedModel, handleModelSelect,
   selectedType, handleTypeSelect,
   selectedEngine, handleEngineSelect,
-  openBulkUpdate
+  openBulkUpdate,
+  setStagePlusPricingDialog
 }) {
   const { t } = useLanguage();
   return (
@@ -2024,29 +2069,54 @@ function VisualEditorSection({
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {showVisualEditor && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                openBulkUpdate();
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 14px',
-                background: 'rgba(0, 255, 136, 0.1)',
-                border: '1px solid rgba(0, 255, 136, 0.3)',
-                borderRadius: '6px',
-                color: '#00ff88',
-                fontSize: '0.85rem',
-                fontWeight: '500',
-                cursor: 'pointer'
-              }}
-              title={t('bulkUpdatePrices') || 'Bulk update prices'}
-            >
-              <DollarSign size={16} />
-              <span className="bulk-btn-text">{t('bulkPrices') || 'Bulk Prices'}</span>
-            </button>
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openBulkUpdate();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  background: 'rgba(0, 255, 136, 0.1)',
+                  border: '1px solid rgba(0, 255, 136, 0.3)',
+                  borderRadius: '6px',
+                  color: '#00ff88',
+                  fontSize: '0.85rem',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+                title={t('bulkUpdatePrices') || 'Bulk update prices'}
+              >
+                <DollarSign size={16} />
+                <span className="bulk-btn-text">{t('bulkPrices') || 'Bulk Prices'}</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setStagePlusPricingDialog(true);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  background: 'rgba(0, 170, 255, 0.1)',
+                  border: '1px solid rgba(0, 170, 255, 0.3)',
+                  borderRadius: '6px',
+                  color: '#00aaff',
+                  fontSize: '0.85rem',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+                title={t('stagePlusPricing') || 'Stage+ Automatic Pricing'}
+              >
+                <Percent size={16} />
+                <span className="bulk-btn-text">{t('stagePlus') || 'Stage+'}</span>
+              </button>
+            </>
           )}
           {showVisualEditor ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
         </div>

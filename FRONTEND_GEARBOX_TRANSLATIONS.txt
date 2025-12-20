@@ -1,0 +1,50 @@
+// Add these translations to F:\work\supreme-tuning\lib\i18n\translations.js
+
+// ============================================
+// DUTCH (NL) - Add after ecuUnlockRequired section
+// ============================================
+    // Gearbox Tuning
+    gearboxTuningRequired: 'DSG & ZF Automaat Tuning Vereist',
+    gearboxTuningIncluded: 'Incl. automaat tuning (vereist)',
+    gearboxTuningDescription: 'Automatische versnellingsbak tuning is verplicht en inbegrepen in de prijs. Zonder versnellingsbak tuning wordt deze service niet aangeboden.',
+
+// ============================================
+// ENGLISH (EN) - Add after ecuUnlockRequired section
+// ============================================
+    // Gearbox Tuning
+    gearboxTuningRequired: 'DSG & ZF Automatic Gearbox Tuning Required',
+    gearboxTuningIncluded: 'Incl. automatic gearbox tuning (mandatory)',
+    gearboxTuningDescription: 'Automatic gearbox tuning is mandatory and included in the price. Without gearbox tuning, this service cannot be provided.',
+
+// ============================================
+// GERMAN (DE) - Add after ecuUnlockRequired section
+// ============================================
+    // Gearbox Tuning
+    gearboxTuningRequired: 'DSG & ZF Automatikgetriebe Tuning Erforderlich',
+    gearboxTuningIncluded: 'Inkl. Automatikgetriebe Tuning (erforderlich)',
+    gearboxTuningDescription: 'Automatikgetriebe-Tuning ist obligatorisch und im Preis inbegriffen. Ohne Getriebe-Tuning kann dieser Service nicht angeboten werden.',
+
+// ============================================
+// FRENCH (FR) - Add after ecuUnlockRequired section
+// ============================================
+    // Gearbox Tuning
+    gearboxTuningRequired: 'Tuning Boîte Automatique DSG & ZF Requis',
+    gearboxTuningIncluded: 'Incl. tuning boîte automatique (obligatoire)',
+    gearboxTuningDescription: 'Le tuning de la boîte automatique est obligatoire et inclus dans le prix. Sans tuning de boîte, ce service ne peut être fourni.',
+
+// ============================================
+// SPANISH (ES) - Add after ecuUnlockRequired section
+// ============================================
+    // Gearbox Tuning
+    gearboxTuningRequired: 'Tuning Caja Automática DSG & ZF Requerido',
+    gearboxTuningIncluded: 'Incl. tuning caja automática (obligatorio)',
+    gearboxTuningDescription: 'El tuning de la caja automática es obligatorio y está incluido en el precio. Sin tuning de caja, este servicio no puede ser proporcionado.',
+
+// ============================================
+// ITALIAN (IT) - Add after ecuUnlockRequired section
+// ============================================
+    // Gearbox Tuning
+    gearboxTuningRequired: 'Tuning Cambio Automatico DSG & ZF Richiesto',
+    gearboxTuningIncluded: 'Incl. tuning cambio automatico (obbligatorio)',
+    gearboxTuningDescription: 'Il tuning del cambio automatico è obbligatorio e incluso nel prezzo. Senza tuning del cambio, questo servizio non può essere fornito.',
+

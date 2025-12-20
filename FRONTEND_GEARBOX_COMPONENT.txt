@@ -1,0 +1,91 @@
+// Add this code to F:\work\supreme-tuning\app\[brand]\[model]\[type]\[engine]\ResultsClient.jsx
+
+// ============================================
+// STEP 1: Import Zap icon (add to existing imports at top of file)
+// ============================================
+// Change this line:
+import { ChevronRight, Phone, ShoppingBag, Check, AlertCircle, Unlock, Edit3, X, Save } from 'lucide-react';
+
+// To this:
+import { ChevronRight, Phone, ShoppingBag, Check, AlertCircle, Zap, Unlock, Edit3, X, Save } from 'lucide-react';
+
+
+// ============================================
+// STEP 2: Add Gearbox Tuning Notice Component
+// ============================================
+// Find the section with the price box (search for "Price Box" or "price-box")
+// It should look like this:
+
+          {/* Price */}
+          <div className="price-box">
+            <div className="price-row">
+              <span>{stage.stageName || 'Stage 1'}</span>
+              <span className="price-value">€{stage.price || '---'}</span>
+            </div>
+          </div>
+
+// Add this code IMMEDIATELY AFTER the price box closing </div>:
+
+          {/* Gearbox Tuning Notice - Mandatory for all vehicles */}
+          <div className="gearbox-tuning-notice" style={{
+            marginTop: '16px',
+            padding: '14px',
+            background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.12) 0%, rgba(0, 200, 100, 0.08) 100%)',
+            border: '1px solid rgba(0, 255, 136, 0.35)',
+            borderRadius: '8px'
+          }}>
+            <h4 style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#00ff88',
+              marginBottom: '6px',
+              fontSize: '13px',
+              fontWeight: '600'
+            }}>
+              <Zap size={16} /> {t('gearboxTuningIncluded')}
+            </h4>
+            <p style={{ fontSize: '12px', color: '#b0b0b0', lineHeight: '1.5', margin: 0 }}>
+              {t('gearboxTuningDescription')}
+            </p>
+          </div>
+
+// ============================================
+// COMPLETE EXAMPLE - Full Price Section
+// ============================================
+// Here's how the complete section should look:
+
+          {/* Price */}
+          <div className="price-box">
+            <div className="price-row">
+              <span>{stage.stageName || 'Stage 1'}</span>
+              <span className="price-value">€{stage.price || '---'}</span>
+            </div>
+          </div>
+
+          {/* Gearbox Tuning Notice - Mandatory for all vehicles */}
+          <div className="gearbox-tuning-notice" style={{
+            marginTop: '16px',
+            padding: '14px',
+            background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.12) 0%, rgba(0, 200, 100, 0.08) 100%)',
+            border: '1px solid rgba(0, 255, 136, 0.35)',
+            borderRadius: '8px'
+          }}>
+            <h4 style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#00ff88',
+              marginBottom: '6px',
+              fontSize: '13px',
+              fontWeight: '600'
+            }}>
+              <Zap size={16} /> {t('gearboxTuningIncluded')}
+            </h4>
+            <p style={{ fontSize: '12px', color: '#b0b0b0', lineHeight: '1.5', margin: 0 }}>
+              {t('gearboxTuningDescription')}
+            </p>
+          </div>
+
+          {/* Action Buttons (if you have them) */}
+
