@@ -63,6 +63,12 @@ export default function AdminPage() {
   const [editGroupDialog, setEditGroupDialog] = useState({ show: false, groupData: null });
   const [bulkUpdateDialog, setBulkUpdateDialog] = useState({ show: false });
 
+  // Bulk update - all data (not filtered by selection)
+  const [allGroups, setAllGroups] = useState([]);
+  const [allModels, setAllModels] = useState([]);
+  const [allTypes, setAllTypes] = useState([]);
+  const [allEngines, setAllEngines] = useState([]);
+
   // Global operation loading state to prevent multiple simultaneous operations
   const [operationInProgress, setOperationInProgress] = useState(false);
 
@@ -1263,8 +1269,41 @@ export default function AdminPage() {
     });
   };
 
+  // Load all data for bulk update dialog
+  const loadAllDataForBulkUpdate = async () => {
+    try {
+      const [groupsRes, modelsRes, typesRes, enginesRes] = await Promise.all([
+        fetch('/api/groups'),
+        fetch('/api/models'),
+        fetch('/api/types'),
+        fetch('/api/engines')
+      ]);
+
+      const [groupsData, modelsData, typesData, enginesData] = await Promise.all([
+        groupsRes.json(),
+        modelsRes.json(),
+        typesRes.json(),
+        enginesRes.json()
+      ]);
+
+      setAllGroups(groupsData);
+      setAllModels(modelsData);
+      setAllTypes(typesData);
+      setAllEngines(enginesData);
+    } catch (error) {
+      console.error('Failed to load data for bulk update:', error);
+      showToast('Failed to load data', 'error');
+    }
+  };
+
+  // Open bulk update dialog and load all data
+  const openBulkUpdateDialog = () => {
+    setBulkUpdateDialog({ show: true });
+    loadAllDataForBulkUpdate();
+  };
+
   // Bulk update prices
-  const performBulkPriceUpdate = async ({ level, targetId, updateType, priceData }) => {
+  const performBulkPriceUpdate = async ({ level, targetId, groupId, updateType, priceData }) => {
     if (operationInProgress) {
       showToast('Another operation is in progress. Please wait.', 'warning');
       return;
@@ -1274,10 +1313,15 @@ export default function AdminPage() {
     startOperation();
 
     try {
+      const payload = { level, targetId, updateType, priceData };
+      if (groupId) {
+        payload.groupId = groupId;
+      }
+
       const result = await fetchAPI('admin/bulk-price', {
         method: 'PUT',
         isProtected: true,
-        body: JSON.stringify({ level, targetId, updateType, priceData })
+        body: JSON.stringify(payload)
       });
 
       showToast(`Updated ${result.updatedCount} stage prices`, 'success');
@@ -1386,7 +1430,7 @@ export default function AdminPage() {
           handleTypeSelect={handleTypeSelect}
           selectedEngine={selectedEngine}
           handleEngineSelect={handleEngineSelect}
-          openBulkUpdate={() => setBulkUpdateDialog({ show: true })}
+          openBulkUpdate={openBulkUpdateDialog}
         />
 
         {/* Data Editor Section
@@ -1513,10 +1557,10 @@ export default function AdminPage() {
         onClose={() => setBulkUpdateDialog({ show: false })}
         onUpdate={performBulkPriceUpdate}
         brands={brands}
-        groups={groups}
-        models={models}
-        generations={types}
-        engines={engines}
+        groups={allGroups}
+        models={allModels}
+        generations={allTypes}
+        engines={allEngines}
       />
 
       {/* Global Operation Loading Overlay */}

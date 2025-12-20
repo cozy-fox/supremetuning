@@ -79,18 +79,33 @@ export default function BulkUpdateDialog({
   };
 
   const getTargetName = () => {
+    let name = '';
     switch (level) {
-      case 'engine': 
-        return engines.find(e => e.id === parseInt(selectedEngine))?.name || 'Engine';
+      case 'engine':
+        name = engines.find(e => e.id === parseInt(selectedEngine))?.name || 'Engine';
+        break;
       case 'generation':
-        return generations.find(g => g.id === parseInt(selectedGeneration))?.name || 'Generation';
+        name = generations.find(g => g.id === parseInt(selectedGeneration))?.name || 'Generation';
+        break;
       case 'model':
-        return models.find(m => m.id === parseInt(selectedModel))?.name || 'Model';
+        name = models.find(m => m.id === parseInt(selectedModel))?.name || 'Model';
+        break;
       case 'brand':
-        return brands.find(b => b.id === parseInt(selectedBrand))?.name || 'Brand';
+        name = brands.find(b => b.id === parseInt(selectedBrand))?.name || 'Brand';
+        break;
       default:
-        return 'Selection';
+        name = 'Selection';
     }
+
+    // Add group filter info if selected
+    if (selectedGroup && (level === 'brand' || level === 'model')) {
+      const groupName = groups.find(g => g.id === parseInt(selectedGroup))?.name;
+      if (groupName) {
+        name += ` (${groupName} group only)`;
+      }
+    }
+
+    return name;
   };
 
   const handleSubmit = async (e) => {
@@ -124,13 +139,29 @@ export default function BulkUpdateDialog({
         };
       }
 
-      await onUpdate({
+      // Include groupId if selected (for brand-level filtering)
+      const updatePayload = {
         level,
         targetId: parseInt(targetId),
         updateType,
         priceData
-      });
-      
+      };
+
+      // Add groupId filter if a group is selected
+      if (selectedGroup) {
+        updatePayload.groupId = parseInt(selectedGroup);
+        console.log('🔍 Bulk update with group filter:', {
+          level,
+          targetId,
+          groupId: selectedGroup,
+          groupName: groups.find(g => g.id === parseInt(selectedGroup))?.name
+        });
+      } else {
+        console.log('🔍 Bulk update without group filter:', { level, targetId });
+      }
+
+      await onUpdate(updatePayload);
+
       onClose();
     } catch (error) {
       console.error('Bulk update failed:', error);
@@ -158,7 +189,7 @@ export default function BulkUpdateDialog({
     padding: '10px 12px',
     borderRadius: '8px',
     border: '1px solid var(--border)',
-    background: 'rgba(255, 255, 255, 0.05)',
+    background: 'rgba(50, 55, 60, 0.8)',
     color: 'var(--text-main)',
     fontSize: '14px',
     cursor: 'pointer'
@@ -284,51 +315,54 @@ export default function BulkUpdateDialog({
             </select>
           </div>
 
-          {level !== 'brand' && selectedBrand && (
-            <>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={labelStyle}>{t('groupOptionalFilter') || 'Group (Optional Filter)'}</label>
-                <select
-                  value={selectedGroup}
-                  onChange={(e) => {
-                    setSelectedGroup(e.target.value);
-                    setSelectedModel('');
-                    setSelectedGeneration('');
-                    setSelectedEngine('');
-                  }}
-                  style={selectStyle}
-                >
-                  <option value="">{t('allGroups') || 'All Groups'}</option>
-                  {filteredGroups.map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ marginBottom: '16px' }}>
-                <label style={labelStyle}>{t('model') || 'Model'}</label>
-                <select
-                  value={selectedModel}
-                  onChange={(e) => {
-                    setSelectedModel(e.target.value);
-                    setSelectedGeneration('');
-                    setSelectedEngine('');
-                  }}
-                  style={selectStyle}
-                  disabled={level === 'brand'}
-                >
-                  <option value="">{t('selectModel') || '-- Select Model --'}</option>
-                  {filteredModels.map(m => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-              </div>
-            </>
+          {/* Group Selector - Optional filter for all levels */}
+          {selectedBrand && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={labelStyle}>{t('groupOptionalFilter') || 'Group (Optional Filter)'}</label>
+              <select
+                value={selectedGroup}
+                onChange={(e) => {
+                  setSelectedGroup(e.target.value);
+                  setSelectedModel('');
+                  setSelectedGeneration('');
+                  setSelectedEngine('');
+                }}
+                style={selectStyle}
+              >
+                <option value="">{t('allGroups') || 'All Groups'}</option>
+                {filteredGroups.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
           )}
 
-          {(level === 'generation' || level === 'engine') && selectedModel && (
+          {/* Model Selector - Required for model, generation, and engine levels */}
+          {(level === 'model' || level === 'generation' || level === 'engine') && (
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>{t('generation') || 'Generation'}</label>
+              <label style={labelStyle}>{t('model') || 'Model'} *</label>
+              <select
+                value={selectedModel}
+                onChange={(e) => {
+                  setSelectedModel(e.target.value);
+                  setSelectedGeneration('');
+                  setSelectedEngine('');
+                }}
+                style={selectStyle}
+                required
+              >
+                <option value="">{t('selectModel') || '-- Select Model --'}</option>
+                {filteredModels.map(m => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Generation Selector - Required for generation and engine levels */}
+          {(level === 'generation' || level === 'engine') && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={labelStyle}>{t('generation') || 'Generation'} *</label>
               <select
                 value={selectedGeneration}
                 onChange={(e) => {
@@ -336,8 +370,10 @@ export default function BulkUpdateDialog({
                   setSelectedEngine('');
                 }}
                 style={selectStyle}
+                required
+                disabled={!selectedModel}
               >
-                <option value="">{t('selectGeneration') || '-- Select Generation --'}</option>
+                <option value="">{selectedModel ? (t('selectGeneration') || '-- Select Generation --') : (t('selectModelFirst') || '-- Select Model First --')}</option>
                 {filteredGenerations.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
@@ -345,15 +381,18 @@ export default function BulkUpdateDialog({
             </div>
           )}
 
-          {level === 'engine' && selectedGeneration && (
+          {/* Engine Selector - Required for engine level */}
+          {level === 'engine' && (
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>{t('engine') || 'Engine'}</label>
+              <label style={labelStyle}>{t('engine') || 'Engine'} *</label>
               <select
                 value={selectedEngine}
                 onChange={(e) => setSelectedEngine(e.target.value)}
                 style={selectStyle}
+                required
+                disabled={!selectedGeneration}
               >
-                <option value="">{t('selectEngine') || '-- Select Engine --'}</option>
+                <option value="">{selectedGeneration ? (t('selectEngine') || '-- Select Engine --') : (t('selectGenerationFirst') || '-- Select Generation First --')}</option>
                 {filteredEngines.map(e => (
                   <option key={e.id} value={e.id}>{e.name}</option>
                 ))}

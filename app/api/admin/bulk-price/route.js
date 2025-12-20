@@ -21,9 +21,10 @@ export async function PUT(request) {
   }
 
   try {
-    const { 
+    const {
       level,      // 'brand', 'model', 'generation', 'engine'
       targetId,   // ID of the target (brandId, modelId, typeId, or engineId)
+      groupId,    // Optional: Filter by group (only for brand/model level)
       priceData,  // { stageName: price } or { percentage: number, operation: 'increase'|'decrease'|'set' }
       updateType  // 'absolute' or 'percentage'
     } = await request.json();
@@ -57,13 +58,30 @@ export async function PUT(request) {
       const engines = await enginesCollection.find({ typeId: { $in: typeIds } }).toArray();
       engineIds = engines.map(e => e.id);
     } else if (level === 'brand') {
-      // Get all models for this brand, then all types, then all engines
-      const models = await modelsCollection.find({ brandId: parseInt(targetId) }).toArray();
+      // Get all models for this brand (optionally filtered by group), then all types, then all engines
+      const modelQuery = { brandId: parseInt(targetId) };
+      if (groupId) {
+        modelQuery.groupId = parseInt(groupId);
+        console.log('🔍 Bulk update with group filter:', { brandId: targetId, groupId });
+      }
+      const models = await modelsCollection.find(modelQuery).toArray();
       const modelIds = models.map(m => m.id);
+
+      console.log(`📊 Found ${models.length} models for brand ${targetId}${groupId ? ` in group ${groupId}` : ''}`);
+
+      if (modelIds.length === 0) {
+        return NextResponse.json(
+          { message: 'No models found for the specified brand/group' },
+          { status: 404 }
+        );
+      }
+
       const types = await typesCollection.find({ modelId: { $in: modelIds } }).toArray();
       const typeIds = types.map(t => t.id);
       const engines = await enginesCollection.find({ typeId: { $in: typeIds } }).toArray();
       engineIds = engines.map(e => e.id);
+
+      console.log(`🔧 Found ${engines.length} engines across ${types.length} generations`);
     }
 
     if (engineIds.length === 0) {
@@ -129,11 +147,14 @@ export async function PUT(request) {
       updatedCount = stages.length;
     }
 
+    console.log(`✅ Bulk update complete: ${updatedCount} stages updated across ${engineIds.length} engines`);
+
     return NextResponse.json({
-      message: `Successfully updated ${updatedCount} stage prices`,
+      message: `Successfully updated ${updatedCount} stage prices across ${engineIds.length} engines`,
       updatedCount,
       totalStages: stages.length,
-      engineCount: engineIds.length
+      engineCount: engineIds.length,
+      groupFiltered: !!groupId
     });
   } catch (error) {
     console.error('❌ Bulk price update error:', error);

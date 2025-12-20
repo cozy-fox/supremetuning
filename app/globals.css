@@ -805,6 +805,26 @@ input::placeholder {
   }
 }
 
+/* Select and Option Styling */
+select {
+  background: rgba(50, 55, 60, 0.8);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+}
+
+select option {
+  background: #1a1a1a;
+  color: var(--text-main);
+  padding: 8px;
+}
+
+select option:hover,
+select option:focus,
+select option:checked {
+  background: rgba(0, 255, 136, 0.2);
+  color: #00ff88;
+}
+
 /* Price Box */
 .price-box {
   background: rgba(80, 85, 90, 0.4);
