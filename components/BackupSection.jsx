@@ -73,8 +73,17 @@ export default function BackupSection({
               className="btn"
               style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              <History size={16} />
-              {showAuditLogs ? (t('hideChangeHistory') || 'Hide Change History') : (t('showChangeHistory') || 'Show Change History')}
+              {backupLoading ? (
+                <RefreshCw size={16} className="spin" />
+              ) : (
+                <History size={16} />
+              )}
+              {backupLoading
+                ? (t('loadingHistory') || 'Loading History...')
+                : showAuditLogs
+                  ? (t('hideChangeHistory') || 'Hide Change History')
+                  : (t('showChangeHistory') || 'Show Change History')
+              }
             </button>
           </div>
 
@@ -196,15 +205,30 @@ export default function BackupSection({
             </div>
           )}
 
+          {/* Loading State for Change History */}
+          {showAuditLogs && backupLoading && (
+            <div style={{
+              padding: '40px',
+              textAlign: 'center',
+              background: 'rgba(50, 55, 60, 0.3)',
+              borderRadius: '8px'
+            }}>
+              <RefreshCw size={32} className="spin" style={{ color: 'var(--primary)', marginBottom: '12px' }} />
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                {t('loadingChangeHistory') || 'Loading change history...'}
+              </div>
+            </div>
+          )}
+
           {/* Audit Logs / Change History */}
-          {showAuditLogs && auditLogs.length > 0 && (
+          {showAuditLogs && !backupLoading && auditLogs.length > 0 && (
             <div>
               <h4 style={{ marginBottom: '16px', fontSize: '0.95rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <History size={18} />
                 {t('changeHistory') || 'Change History'} ({auditLogs.length} {t('recentChanges') || 'recent changes'})
               </h4>
               <div style={{
-                maxHeight: '500px',
+                maxHeight: '600px',
                 overflowY: 'auto',
                 background: 'rgba(50, 55, 60, 0.3)',
                 borderRadius: '8px',
@@ -214,70 +238,282 @@ export default function BackupSection({
                   <div
                     key={index}
                     style={{
-                      padding: '12px',
-                      marginBottom: '8px',
+                      padding: '16px',
+                      marginBottom: '12px',
                       background: 'rgba(255,255,255,0.03)',
-                      borderRadius: '6px',
-                      borderLeft: `3px solid ${
+                      borderRadius: '8px',
+                      borderLeft: `4px solid ${
                         log.action === 'create' ? '#00ff88' :
                         log.action === 'update' ? '#4a9eff' :
                         log.action === 'delete' ? '#ff4444' :
-                        '#ffa500'
+                        log.action === 'move' ? '#ffa500' :
+                        '#888'
                       }`
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                    {/* Header with action and collection */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.85rem', fontWeight: '500', marginBottom: '4px' }}>
+                        <div style={{ fontSize: '0.9rem', fontWeight: '600', marginBottom: '6px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                           <span style={{
-                            padding: '2px 6px',
+                            padding: '3px 8px',
                             borderRadius: '4px',
                             background: log.action === 'create' ? 'rgba(0, 255, 136, 0.2)' :
                                        log.action === 'update' ? 'rgba(74, 158, 255, 0.2)' :
                                        log.action === 'delete' ? 'rgba(255, 68, 68, 0.2)' :
-                                       'rgba(255, 165, 0, 0.2)',
+                                       log.action === 'move' ? 'rgba(255, 165, 0, 0.2)' :
+                                       'rgba(136, 136, 136, 0.2)',
                             color: log.action === 'create' ? '#00ff88' :
                                   log.action === 'update' ? '#4a9eff' :
                                   log.action === 'delete' ? '#ff4444' :
-                                  '#ffa500',
-                            fontSize: '0.75rem',
+                                  log.action === 'move' ? '#ffa500' :
+                                  '#888',
+                            fontSize: '0.7rem',
                             textTransform: 'uppercase',
-                            marginRight: '8px'
+                            fontWeight: '700',
+                            letterSpacing: '0.5px'
                           }}>
                             {log.action}
                           </span>
-                          {log.collection} / {log.documentName || `ID: ${log.documentId}`}
+                          <span style={{
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            fontSize: '0.7rem',
+                            textTransform: 'uppercase',
+                            color: 'var(--text-muted)'
+                          }}>
+                            {log.collection}
+                          </span>
+                          <span style={{ color: 'var(--text-primary)' }}>
+                            {log.documentName || `ID: ${log.documentId}`}
+                          </span>
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Clock size={12} />
-                          {new Date(log.changedAt).toLocaleString()}
-                          {log.changedBy && ` • by ${log.changedBy}`}
-                          {log.version && ` • v${log.version}`}
-                        </div>
-                        {log.changes && Object.keys(log.changes).length > 0 && (
-                          <div style={{ fontSize: '0.75rem', marginTop: '8px', padding: '8px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px' }}>
-                            <div style={{ fontWeight: '600', marginBottom: '4px', color: 'var(--primary)' }}>{t('changedFields') || 'Changed fields:'}</div>
-                            {Object.entries(log.resolvedChanges || log.changes).map(([field, change]) => {
-                              // Display field name without 'Id' suffix if it's an ID field
-                              const displayField = field.endsWith('Id') ? field.replace('Id', '') : field;
 
+                        {/* Hierarchy Path */}
+                        {log.hierarchyPath && (
+                          <div style={{
+                            fontSize: '0.8rem',
+                            color: 'var(--primary)',
+                            marginBottom: '8px',
+                            padding: '6px 10px',
+                            background: 'rgba(0, 255, 136, 0.05)',
+                            borderRadius: '4px',
+                            display: 'inline-block'
+                          }}>
+                            📍 {log.hierarchyPath}
+                          </div>
+                        )}
+
+                        {/* Timestamp and metadata */}
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Clock size={12} />
+                            {new Date(log.changedAt).toLocaleString()}
+                          </span>
+                          {log.changedBy && <span>• by {log.changedBy}</span>}
+                          {log.version && <span>• v{log.version}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Stage Details (for stages collection) */}
+                    {log.stageDetails && (log.stageDetails.before || log.stageDetails.after) && (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        background: 'rgba(74, 158, 255, 0.05)',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(74, 158, 255, 0.1)'
+                      }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: '600', marginBottom: '8px', color: '#4a9eff' }}>
+                          ⚡ Stage Data
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px' }}>
+                          {log.stageDetails.after && Object.entries(log.stageDetails.after).map(([key, value]) => {
+                            const beforeValue = log.stageDetails.before?.[key];
+                            const changed = beforeValue !== undefined && beforeValue !== value;
+                            return (
+                              <div key={key} style={{
+                                padding: '6px 10px',
+                                background: changed ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                                borderRadius: '4px',
+                                fontSize: '0.75rem'
+                              }}>
+                                <span style={{ color: 'var(--text-muted)' }}>{key}: </span>
+                                {changed && (
+                                  <>
+                                    <span style={{ color: '#ff4444', textDecoration: 'line-through', marginRight: '4px' }}>
+                                      {beforeValue}
+                                    </span>
+                                    →{' '}
+                                  </>
+                                )}
+                                <span style={{ color: changed ? '#00ff88' : 'var(--text-primary)', fontWeight: changed ? '600' : '400' }}>
+                                  {value}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Changed Fields */}
+                    {log.changes && Object.keys(log.changes).length > 0 && (
+                      <div style={{
+                        fontSize: '0.75rem',
+                        marginTop: '12px',
+                        padding: '12px',
+                        background: 'rgba(0,0,0,0.3)',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{ fontWeight: '600', marginBottom: '8px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>📝</span> {t('changedFields') || 'Changed fields:'}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {Object.entries(log.resolvedChanges || log.changes).map(([field, change]) => {
+                            // Display field name without 'Id' suffix if it's an ID field
+                            const displayField = field.endsWith('Id') ? field.replace('Id', '') : field;
+
+                            // Handle logo fields specially - just show "Logo changed"
+                            if (change.isLogo || field === 'logo' || field.includes('Logo')) {
                               return (
-                                <div key={field} style={{ marginBottom: '4px', paddingLeft: '8px' }}>
-                                  <span style={{ color: 'var(--text-muted)' }}>{displayField}:</span>{' '}
-                                  <span style={{ color: '#ff4444', textDecoration: 'line-through' }}>
-                                    {change.fromName || JSON.stringify(change.from)}
-                                  </span>
-                                  {' → '}
-                                  <span style={{ color: '#00ff88' }}>
-                                    {change.toName || JSON.stringify(change.to)}
+                                <div key={field} style={{
+                                  padding: '6px 10px',
+                                  background: 'rgba(138, 43, 226, 0.1)',
+                                  borderRadius: '4px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px'
+                                }}>
+                                  <span style={{ fontSize: '1rem' }}>🖼️</span>
+                                  <span style={{ color: '#a855f7', fontWeight: '500' }}>
+                                    {t('logoChanged') || 'Logo changed'}
                                   </span>
                                 </div>
                               );
-                            })}
-                          </div>
-                        )}
+                            }
+
+                            // Use formatted values if available
+                            const fromDisplay = change.fromName || change.fromFormatted || JSON.stringify(change.from);
+                            const toDisplay = change.toName || change.toFormatted || JSON.stringify(change.to);
+
+                            return (
+                              <div key={field} style={{
+                                padding: '6px 10px',
+                                background: 'rgba(255,255,255,0.03)',
+                                borderRadius: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                flexWrap: 'wrap'
+                              }}>
+                                <span style={{
+                                  color: 'var(--text-muted)',
+                                  fontWeight: '500',
+                                  minWidth: '80px'
+                                }}>
+                                  {displayField}:
+                                </span>
+                                <span style={{
+                                  color: '#ff4444',
+                                  textDecoration: 'line-through',
+                                  opacity: 0.8
+                                }}>
+                                  {fromDisplay}
+                                </span>
+                                <span style={{ color: 'var(--text-muted)' }}>→</span>
+                                <span style={{
+                                  color: '#00ff88',
+                                  fontWeight: '600'
+                                }}>
+                                  {toDisplay}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
+                    )}
+
+                    {/* Create action - show created data */}
+                    {log.action === 'create' && log.after && !log.changes && (
+                      <div style={{
+                        fontSize: '0.75rem',
+                        marginTop: '12px',
+                        padding: '12px',
+                        background: 'rgba(0, 255, 136, 0.05)',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(0, 255, 136, 0.1)'
+                      }}>
+                        <div style={{ fontWeight: '600', marginBottom: '8px', color: '#00ff88' }}>
+                          ✨ {t('createdWith') || 'Created with:'}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '6px' }}>
+                          {Object.entries(log.after).filter(([k]) => !k.startsWith('_') && k !== 'id').map(([key, value]) => {
+                            // Handle logo fields - just show indicator
+                            const isLogo = key === 'logo' || key.includes('Logo') || key.includes('logo');
+                            const displayValue = isLogo
+                              ? (value && value !== '[Logo Data]' ? '✓ Set' : '—')
+                              : (typeof value === 'object' ? JSON.stringify(value) : String(value));
+
+                            return (
+                              <div key={key} style={{
+                                padding: '4px 8px',
+                                background: isLogo ? 'rgba(138, 43, 226, 0.1)' : 'rgba(255,255,255,0.05)',
+                                borderRadius: '4px'
+                              }}>
+                                <span style={{ color: 'var(--text-muted)' }}>{key}: </span>
+                                <span style={{ color: isLogo ? '#a855f7' : 'var(--text-primary)' }}>
+                                  {displayValue}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Delete action - show deleted data */}
+                    {log.action === 'delete' && log.before && (
+                      <div style={{
+                        fontSize: '0.75rem',
+                        marginTop: '12px',
+                        padding: '12px',
+                        background: 'rgba(255, 68, 68, 0.05)',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(255, 68, 68, 0.1)'
+                      }}>
+                        <div style={{ fontWeight: '600', marginBottom: '8px', color: '#ff4444' }}>
+                          🗑️ {t('deletedData') || 'Deleted data:'}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '6px' }}>
+                          {Object.entries(log.before).filter(([k]) => !k.startsWith('_') && k !== 'id').map(([key, value]) => {
+                            // Handle logo fields - just show indicator
+                            const isLogo = key === 'logo' || key.includes('Logo') || key.includes('logo');
+                            const displayValue = isLogo
+                              ? (value && value !== '[Logo Data]' ? '✓ Had logo' : '—')
+                              : (typeof value === 'object' ? JSON.stringify(value) : String(value));
+
+                            return (
+                              <div key={key} style={{
+                                padding: '4px 8px',
+                                background: isLogo ? 'rgba(138, 43, 226, 0.1)' : 'rgba(255,255,255,0.05)',
+                                borderRadius: '4px',
+                                textDecoration: isLogo ? 'none' : 'line-through',
+                                opacity: 0.7
+                              }}>
+                                <span style={{ color: 'var(--text-muted)' }}>{key}: </span>
+                                <span style={{ color: isLogo ? '#a855f7' : 'var(--text-primary)' }}>
+                                  {displayValue}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
