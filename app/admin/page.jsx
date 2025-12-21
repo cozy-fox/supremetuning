@@ -17,6 +17,7 @@ import EditDialog from '@/components/EditDialog';
 import AddEngineDialog from '@/components/AddEngineDialog';
 import AddBrandDialog from '@/components/AddBrandDialog';
 import AddGroupDialog from '@/components/AddGroupDialog';
+import EditBrandDialog from '@/components/EditBrandDialog';
 import EditGroupDialog from '@/components/EditGroupDialog';
 import BulkUpdateDialog from '@/components/BulkUpdateDialog';
 import StagePlusPricingDialog from '@/components/StagePlusPricingDialog';
@@ -64,6 +65,7 @@ export default function AdminPage() {
   const [addEngineDialog, setAddEngineDialog] = useState({ show: false });
   const [addBrandDialog, setAddBrandDialog] = useState({ show: false });
   const [addGroupDialog, setAddGroupDialog] = useState({ show: false });
+  const [editBrandDialog, setEditBrandDialog] = useState({ show: false, brandData: null });
   const [editGroupDialog, setEditGroupDialog] = useState({ show: false, groupData: null });
   const [bulkUpdateDialog, setBulkUpdateDialog] = useState({ show: false });
   const [stagePlusPricingDialog, setStagePlusPricingDialog] = useState(false);
@@ -677,42 +679,59 @@ export default function AdminPage() {
     }
   };
 
-  // Rename brand
-  const renameBrand = (brandId, currentName) => {
-    setEditDialog({
+  // Edit brand (opens dialog with name and logo)
+  const editBrand = (brand) => {
+    setEditBrandDialog({
       show: true,
-      title: 'Rename Brand',
-      value: currentName,
-      onConfirm: (newName) => performRenameBrand(brandId, newName)
+      brandData: brand
     });
   };
 
-  const performRenameBrand = async (brandId, newName) => {
-    if (!newName || newName.trim() === '') return;
+  // Legacy function name for compatibility
+  const renameBrand = (brandId, currentName) => {
+    // Find the full brand object
+    const brand = brands.find(b => b.id === brandId);
+    if (brand) {
+      editBrand(brand);
+    }
+  };
+
+  const performEditBrand = async (brandId, formData) => {
+    if (!formData.name || formData.name.trim() === '') return;
 
     try {
       await fetchAPI('admin/brand', {
         method: 'PUT',
         isProtected: true,
-        body: JSON.stringify({ id: brandId, name: newName.trim() }),
+        body: JSON.stringify({
+          id: brandId,
+          name: formData.name.trim(),
+          logo: formData.logo || null
+        }),
       });
+
+      const updatedBrand = {
+        name: formData.name.trim(),
+        slug: formData.name.toLowerCase().replace(/\s+/g, '-'),
+        logo: formData.logo || null
+      };
 
       // Update local state
       setBrands(brands.map(b =>
         b.id === brandId
-          ? { ...b, name: newName.trim(), slug: newName.toLowerCase().replace(/\s+/g, '-') }
+          ? { ...b, ...updatedBrand }
           : b
       ));
 
-      // Update selected brand if it's the one being renamed
+      // Update selected brand if it's the one being edited
       if (selectedBrand?.id === brandId) {
-        setSelectedBrand({ ...selectedBrand, name: newName.trim(), slug: newName.toLowerCase().replace(/\s+/g, '-') });
+        setSelectedBrand({ ...selectedBrand, ...updatedBrand });
       }
 
-      setDataMessage({ type: 'success', text: 'Brand renamed successfully' });
-      showToast('Brand renamed successfully', 'success');
+      setDataMessage({ type: 'success', text: 'Brand updated successfully' });
+      showToast('Brand updated successfully', 'success');
     } catch (error) {
-      setDataMessage({ type: 'error', text: 'Failed to rename: ' + error.message });
+      setDataMessage({ type: 'error', text: 'Failed to update: ' + error.message });
     }
   };
 
@@ -1617,6 +1636,17 @@ export default function AdminPage() {
           performAddBrand(formData);
         }}
         onCancel={() => setAddBrandDialog({ show: false })}
+      />
+
+      {/* Edit Brand Dialog */}
+      <EditBrandDialog
+        show={editBrandDialog.show}
+        brandData={editBrandDialog.brandData}
+        onConfirm={(formData) => {
+          performEditBrand(editBrandDialog.brandData?.id, formData);
+          setEditBrandDialog({ show: false, brandData: null });
+        }}
+        onCancel={() => setEditBrandDialog({ show: false, brandData: null })}
       />
 
       {/* Add Group Dialog */}

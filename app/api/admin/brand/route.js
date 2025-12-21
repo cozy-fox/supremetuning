@@ -79,7 +79,7 @@ export async function PUT(request) {
   }
 
   try {
-    const { id, name } = await request.json();
+    const { id, name, logo } = await request.json();
 
     if (!id || !name) {
       return NextResponse.json(
@@ -89,11 +89,18 @@ export async function PUT(request) {
     }
 
     const slug = name.toLowerCase().replace(/\s+/g, '-');
-    await updateById('brands', id, { name: name.trim(), slug });
+    const updateData = { name: name.trim(), slug };
 
-    return NextResponse.json({ 
+    // Include logo if provided (can be null to remove, or a data URL to update)
+    if (logo !== undefined) {
+      updateData.logo = logo;
+    }
+
+    await updateById('brands', id, updateData);
+
+    return NextResponse.json({
       message: 'Brand updated successfully',
-      brand: { id, name: name.trim(), slug }
+      brand: { id, name: name.trim(), slug, logo: updateData.logo }
     });
   } catch (error) {
     console.error('❌ Update brand error:', error);
