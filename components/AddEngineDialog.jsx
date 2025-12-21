@@ -10,6 +10,9 @@ export default function AddEngineDialog({ show, onConfirm, onCancel, brandName }
     name: '',
     stockPower: '',
     tunedPower: '',
+    stockTorque: '',
+    tunedTorque: '',
+    stagePrice: '',
     engineType: 'Diesel',
     ecuUnlock: false,
     cpcUpgrade: false,
@@ -29,6 +32,9 @@ export default function AddEngineDialog({ show, onConfirm, onCancel, brandName }
         name: '',
         stockPower: '',
         tunedPower: '',
+        stockTorque: '',
+        tunedTorque: '',
+        stagePrice: '',
         engineType: 'Diesel',
         ecuUnlock: false,
         cpcUpgrade: false,
@@ -190,6 +196,78 @@ export default function AddEngineDialog({ show, onConfirm, onCancel, brandName }
                 }}
               />
             </div>
+          </div>
+
+          {/* Stock Torque and Tuned Torque */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: '#b8c0c8' }}>
+                {t('stockTorqueLabel') || 'Stock Torque (Nm)'}
+              </label>
+              <input
+                type="number"
+                value={formData.stockTorque}
+                onChange={(e) => handleChange('stockTorque', e.target.value)}
+                placeholder="320"
+                min="0"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: 'var(--text)',
+                  fontSize: '16px'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: '#b8c0c8' }}>
+                {t('tunedTorqueLabel') || 'Tuned Torque (Nm)'}
+              </label>
+              <input
+                type="number"
+                value={formData.tunedTorque}
+                onChange={(e) => handleChange('tunedTorque', e.target.value)}
+                placeholder="400"
+                min="0"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: 'var(--text)',
+                  fontSize: '16px'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Stage Price */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: '#b8c0c8' }}>
+              {t('stagePrice') || 'Stage Price (€)'}
+            </label>
+            <input
+              type="number"
+              value={formData.stagePrice}
+              onChange={(e) => handleChange('stagePrice', e.target.value)}
+              placeholder="500"
+              min="0"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                background: 'rgba(255, 255, 255, 0.05)',
+                color: 'var(--text)',
+                fontSize: '16px'
+              }}
+            />
+            <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px', margin: '4px 0 0 0' }}>
+              {t('stagePriceHint') || 'Base price for Stage 1 (other stages will use this as reference)'}
+            </p>
           </div>
 
           {/* Engine Type */}

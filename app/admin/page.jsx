@@ -15,6 +15,7 @@ import Toast from '@/components/Toast';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import EditDialog from '@/components/EditDialog';
 import AddEngineDialog from '@/components/AddEngineDialog';
+import AddBrandDialog from '@/components/AddBrandDialog';
 import AddGroupDialog from '@/components/AddGroupDialog';
 import EditGroupDialog from '@/components/EditGroupDialog';
 import BulkUpdateDialog from '@/components/BulkUpdateDialog';
@@ -826,22 +827,20 @@ export default function AdminPage() {
 
   // Add new brand
   const addBrand = () => {
-    setEditDialog({
-      show: true,
-      title: 'Add New Brand',
-      value: '',
-      onConfirm: (name) => performAddBrand(name)
-    });
+    setAddBrandDialog({ show: true });
   };
 
-  const performAddBrand = async (name) => {
-    if (!name || name.trim() === '') return;
+  const performAddBrand = async (formData) => {
+    if (!formData.name || formData.name.trim() === '') return;
 
     try {
       const response = await fetchAPI('admin/brand', {
         method: 'POST',
         isProtected: true,
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          logo: formData.logo || null
+        }),
       });
 
       // Add to local state
@@ -850,7 +849,7 @@ export default function AdminPage() {
 
       setDataMessage({ type: 'success', text: 'Brand added successfully' });
       showToast('Brand added successfully', 'success');
-      setEditDialog({ show: false, title: '', value: '', onConfirm: null });
+      setAddBrandDialog({ show: false });
     } catch (error) {
       setDataMessage({ type: 'error', text: 'Failed to add brand: ' + error.message });
       showToast('Failed to add brand: ' + error.message, 'error');
@@ -1005,11 +1004,16 @@ export default function AdminPage() {
           name: formData.name.trim(),
           type: formData.engineType || 'Diesel',
           power: formData.stockPower ? parseInt(formData.stockPower) : null,
-          torque: null
+          torque: formData.stockTorque ? parseInt(formData.stockTorque) : null
         }),
       });
 
       const newEngine = engineResponse.engine;
+
+      // Parse torque and price values
+      const stockNm = formData.stockTorque ? parseInt(formData.stockTorque) : 0;
+      const tunedNm = formData.tunedTorque ? parseInt(formData.tunedTorque) : 0;
+      const basePrice = formData.stagePrice ? parseInt(formData.stagePrice) : 0;
 
       // Create stages if requested
       if (formData.createStages) {
@@ -1020,9 +1024,9 @@ export default function AdminPage() {
             stageName: 'Stage 1',
             stockHp: formData.stockPower ? parseInt(formData.stockPower) : 0,
             tunedHp: formData.tunedPower ? parseInt(formData.tunedPower) : 0,
-            stockNm: 0,
-            tunedNm: 0,
-            price: 0,
+            stockNm: stockNm,
+            tunedNm: tunedNm,
+            price: basePrice,
             ecuUnlock: formData.ecuUnlock || false,
             cpcUpgrade: formData.cpcUpgrade || false
           });
@@ -1033,9 +1037,9 @@ export default function AdminPage() {
             stageName: 'Stage 1+',
             stockHp: formData.stockPower ? parseInt(formData.stockPower) : 0,
             tunedHp: formData.tunedPower ? Math.round(parseInt(formData.tunedPower) * 1.05) : 0,
-            stockNm: 0,
-            tunedNm: 0,
-            price: 0,
+            stockNm: stockNm,
+            tunedNm: tunedNm ? Math.round(tunedNm * 1.05) : 0,
+            price: basePrice ? Math.round(basePrice * 1.1) : 0,
             ecuUnlock: formData.ecuUnlock || false,
             cpcUpgrade: formData.cpcUpgrade || false
           });
@@ -1046,9 +1050,9 @@ export default function AdminPage() {
             stageName: 'Stage 2',
             stockHp: formData.stockPower ? parseInt(formData.stockPower) : 0,
             tunedHp: formData.tunedPower ? Math.round(parseInt(formData.tunedPower) * 1.1) : 0,
-            stockNm: 0,
-            tunedNm: 0,
-            price: 0,
+            stockNm: stockNm,
+            tunedNm: tunedNm ? Math.round(tunedNm * 1.1) : 0,
+            price: basePrice ? Math.round(basePrice * 1.2) : 0,
             ecuUnlock: formData.ecuUnlock || false,
             cpcUpgrade: formData.cpcUpgrade || false
           });
@@ -1059,9 +1063,9 @@ export default function AdminPage() {
             stageName: 'Stage 2+',
             stockHp: formData.stockPower ? parseInt(formData.stockPower) : 0,
             tunedHp: formData.tunedPower ? Math.round(parseInt(formData.tunedPower) * 1.15) : 0,
-            stockNm: 0,
-            tunedNm: 0,
-            price: 0,
+            stockNm: stockNm,
+            tunedNm: tunedNm ? Math.round(tunedNm * 1.15) : 0,
+            price: basePrice ? Math.round(basePrice * 1.3) : 0,
             ecuUnlock: formData.ecuUnlock || false,
             cpcUpgrade: formData.cpcUpgrade || false
           });
@@ -1604,6 +1608,15 @@ export default function AdminPage() {
           setEditDialog({ show: false, title: '', value: '', onConfirm: null });
         }}
         onCancel={() => setEditDialog({ show: false, title: '', value: '', onConfirm: null })}
+      />
+
+      {/* Add Brand Dialog */}
+      <AddBrandDialog
+        show={addBrandDialog.show}
+        onConfirm={(formData) => {
+          performAddBrand(formData);
+        }}
+        onCancel={() => setAddBrandDialog({ show: false })}
       />
 
       {/* Add Group Dialog */}
