@@ -2,6 +2,16 @@ import { getData, saveData } from '@/lib/data';
 import { requireAdmin } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
+// Force dynamic - no caching
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const noCacheHeaders = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  'Pragma': 'no-cache',
+  'Expires': '0',
+};
+
 export async function GET(request) {
   const authResult = requireAdmin(request);
   if (authResult.error) {
@@ -13,7 +23,7 @@ export async function GET(request) {
 
   try {
     const data = await getData();
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: noCacheHeaders });
   } catch (error) {
     return NextResponse.json(
       { message: 'Failed to fetch data' },

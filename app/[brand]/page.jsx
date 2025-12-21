@@ -5,13 +5,9 @@ import Header from '@/components/Header';
 import GroupSelector from './GroupSelector';
 import BrandSelector from './BrandSelector';
 
-// Generate static params for all brands (SSG)
-export async function generateStaticParams() {
-  const brands = await getBrands();
-  return brands.map((brand) => ({
-    brand: brand.name.toLowerCase().replace(/\s+/g, '-'),
-  }));
-}
+// Force dynamic rendering - always fetch fresh data from database
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 // Dynamic metadata for SEO
 export async function generateMetadata({ params }) {

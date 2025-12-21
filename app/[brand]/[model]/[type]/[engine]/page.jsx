@@ -4,6 +4,10 @@ import { notFound } from 'next/navigation';
 import Header from '@/components/Header';
 import ResultsClient from './ResultsClient';
 
+// Force dynamic rendering - always fetch fresh data from database
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Dynamic metadata for SEO - this is crucial for search engines
 export async function generateMetadata({ params }) {
   const { brand, model, type, engine } = await params;

@@ -3,6 +3,10 @@ import Header from '@/components/Header';
 import BrandGrid from '@/components/BrandGrid';
 import HeroSection from '@/components/HeroSection';
 
+// Force dynamic rendering - always fetch fresh data from database
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const metadata = {
   title: 'Chiptuning Calculator | Supreme Tuning',
   description: 'Bereken direct hoeveel vermogen uw auto kan winnen met professionele chiptuning. Selecteer uw merk en ontdek de mogelijkheden.',
