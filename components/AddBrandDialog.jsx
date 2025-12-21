@@ -8,14 +8,15 @@ export default function AddBrandDialog({ show, onConfirm, onCancel }) {
   const { t } = useLanguage();
   const [formData, setFormData] = useState({
     name: '',
-    logo: ''
+    logo: '',
+    isTest: false
   });
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
   useEffect(() => {
     if (show) {
-      setFormData({ name: '', logo: '' });
+      setFormData({ name: '', logo: '', isTest: false });
       setUploadError('');
     }
   }, [show]);
@@ -223,6 +224,57 @@ export default function AddBrandDialog({ show, onConfirm, onCancel }) {
                 ⚠️ {uploadError}
               </p>
             )}
+          </div>
+
+          {/* Test/Product Toggle */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '12px', fontSize: '0.9rem', color: '#b8c0c8' }}>
+              {t('brandType') || 'Brand Type'}
+            </label>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, isTest: false })}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: !formData.isTest ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                  border: !formData.isTest ? '2px solid #00ff88' : '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '8px',
+                  color: !formData.isTest ? '#00ff88' : '#8a8a8a',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: !formData.isTest ? '600' : '400',
+                  transition: 'all 0.2s'
+                }}
+              >
+                🏭 {t('production') || 'Production'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, isTest: true })}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: formData.isTest ? 'rgba(255, 170, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                  border: formData.isTest ? '2px solid #ffaa00' : '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '8px',
+                  color: formData.isTest ? '#ffaa00' : '#8a8a8a',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: formData.isTest ? '600' : '400',
+                  transition: 'all 0.2s'
+                }}
+              >
+                🧪 {t('test') || 'Test'}
+              </button>
+            </div>
+            <p style={{ margin: '8px 0 0 0', color: '#6a6a6a', fontSize: '0.8rem' }}>
+              {formData.isTest
+                ? (t('testBrandDescription') || 'Test brands are hidden from the frontend website')
+                : (t('productionBrandDescription') || 'Production brands are visible on the frontend website')
+              }
+            </p>
           </div>
 
           {/* Action Buttons */}

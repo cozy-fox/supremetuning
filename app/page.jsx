@@ -1,6 +1,6 @@
 import { getBrands } from '@/lib/data';
 import Header from '@/components/Header';
-import BrandCard from '@/components/BrandCard';
+import BrandGrid from '@/components/BrandGrid';
 import HeroSection from '@/components/HeroSection';
 
 export const metadata = {
@@ -21,12 +21,8 @@ export default async function HomePage() {
       <main className="container" style={{ padding: '40px 24px' }}>
         <HeroSection />
 
-        {/* Brand Grid */}
-        <div className="grid-brands" style={{ marginTop: '40px' }}>
-          {brands.map((brand) => (
-            <BrandCard key={brand.id} brand={brand} />
-          ))}
-        </div>
+        {/* Brand Grid with Status Filter */}
+        <BrandGrid brands={brands} />
       </main>
     </>
   );

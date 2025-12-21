@@ -201,6 +201,29 @@ export default function AdminPage() {
     setBrandsLoading(false);
   };
 
+  // Migrate brands to add isTest field
+  const migrateBrands = async () => {
+    try {
+      startOperation('migrateBrands');
+      const response = await fetchAPI('admin/migrate-brands', {
+        method: 'POST',
+        isProtected: true
+      });
+      console.log('✅ Migration result:', response);
+      setDataMessage({
+        type: 'success',
+        text: `Migration complete: ${response.migratedCount} brands updated`
+      });
+      // Reload brands to get updated data
+      await loadBrands();
+    } catch (error) {
+      console.error('❌ Migration error:', error);
+      setDataMessage({ type: 'error', text: 'Migration failed: ' + error.message });
+    } finally {
+      endOperation('migrateBrands');
+    }
+  };
+
   // Load groups for selected brand
   const loadGroups = async (brandId) => {
     setGroupsLoading(true);
@@ -706,14 +729,16 @@ export default function AdminPage() {
         body: JSON.stringify({
           id: brandId,
           name: formData.name.trim(),
-          logo: formData.logo || null
+          logo: formData.logo || null,
+          isTest: formData.isTest === true
         }),
       });
 
       const updatedBrand = {
         name: formData.name.trim(),
         slug: formData.name.toLowerCase().replace(/\s+/g, '-'),
-        logo: formData.logo || null
+        logo: formData.logo || null,
+        isTest: formData.isTest === true
       };
 
       // Update local state
@@ -858,7 +883,8 @@ export default function AdminPage() {
         isProtected: true,
         body: JSON.stringify({
           name: formData.name.trim(),
-          logo: formData.logo || null
+          logo: formData.logo || null,
+          isTest: formData.isTest === true
         }),
       });
 
@@ -1548,6 +1574,7 @@ export default function AdminPage() {
           handleEngineSelect={handleEngineSelect}
           openBulkUpdate={openBulkUpdateDialog}
           setStagePlusPricingDialog={setStagePlusPricingDialog}
+          migrateBrands={migrateBrands}
         />
 
         {/* Data Editor Section
@@ -2156,11 +2183,57 @@ function VisualEditorSection({
   selectedEngine, handleEngineSelect,
   openBulkUpdate,
   setStagePlusPricingDialog,
-  loadAllDataForBulkUpdate
+  loadAllDataForBulkUpdate,
+  migrateBrands
 }) {
   const { t } = useLanguage();
   const [showDataManagerMenu, setShowDataManagerMenu] = React.useState(false);
   const dataManagerMenuRef = React.useRef(null);
+  const [brandFilter, setBrandFilter] = React.useState('all'); // 'all', 'production', 'test'
+
+  // Consistent button styles for all Add buttons - matching Options button style
+  const addButtonStyle = {
+    background: 'rgba(168, 176, 184, 0.1)',
+    border: '1px solid rgba(168, 176, 184, 0.3)',
+    color: 'rgb(168, 176, 184)',
+    cursor: 'pointer',
+    padding: '8px 14px',
+    borderRadius: '6px',
+    fontSize: '0.85rem',
+    fontWeight: '500',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    transition: 'all 0.2s ease',
+    whiteSpace: 'nowrap',
+    minWidth: '36px',
+    height: '36px'
+  };
+
+  // Consistent select/dropdown styles - matching Options button style
+  const selectStyle = {
+    background: 'rgba(168, 176, 184, 0.1)',
+    border: '1px solid rgba(168, 176, 184, 0.3)',
+    borderRadius: '6px',
+    color: 'rgb(168, 176, 184)',
+    padding: '8px 14px',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    fontWeight: '500',
+    height: '36px',
+    minWidth: '100px',
+    marginBottom: '0px'
+  };
+
+  // Filter brands based on brandFilter selection
+  const filteredBrands = React.useMemo(() => {
+    if (!brands) return [];
+    if (brandFilter === 'all') return brands;
+    if (brandFilter === 'production') return brands.filter(b => !b.isTest);
+    if (brandFilter === 'test') return brands.filter(b => b.isTest === true);
+    return brands;
+  }, [brands, brandFilter]);
 
   // Close menu when clicking outside
   React.useEffect(() => {
@@ -2293,7 +2366,7 @@ function VisualEditorSection({
                   {/* <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      // TODO: Add third option functionality
+                      migrateBrands();
                       setShowDataManagerMenu(false);
                     }}
                     style={{
@@ -2315,7 +2388,7 @@ function VisualEditorSection({
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
                     <Database size={18} />
-                    <span>{t('dataTools') || 'Data Tools'}</span>
+                    <span>{t('migrateBrands') || 'Migrate Brands'}</span>
                   </button> */}
                 </div>
               )}
@@ -2355,29 +2428,32 @@ function VisualEditorSection({
             <div className="admin-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '16px' }}>
               {/* Brands List */}
               <div style={{ background: 'rgba(50, 55, 60, 0.3)', borderRadius: '8px', padding: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                   <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--primary)' }}>
-                    {t('brands') || 'Brands'} ({brands?.length || 0})
+                    {t('brands') || 'Brands'} ({filteredBrands?.length || 0}{brandFilter !== 'all' ? ` / ${brands?.length || 0}` : ''})
                   </h4>
-                  <button
-                    onClick={addBrand}
-                    style={{
-                      background: 'var(--primary)',
-                      border: 'none',
-                      color: '#1a1a1a',
-                      cursor: 'pointer',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '0.75rem',
-                      fontWeight: 'bold'
-                    }}
-                    title={t('addNewBrand') || 'Add new brand'}
-                  >
-                    + {t('addBrand') || 'Add Brand'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <select
+                      value={brandFilter}
+                      onChange={(e) => setBrandFilter(e.target.value)}
+                      style={selectStyle}
+                      
+                    >
+                      <option value="all" style={{ background: '#1a1a1a' }}>{t('status') || 'Status'}: {t('all') || 'All'}</option>
+                      <option value="production" style={{ background: '#1a1a1a' }}>{t('status') || 'Status'}: {t('production') || 'Production'}</option>
+                      <option value="test" style={{ background: '#1a1a1a' }}>{t('status') || 'Status'}: {t('test') || 'Test'}</option>
+                    </select>
+                    <button
+                      onClick={addBrand}
+                      style={addButtonStyle}
+                      title={t('addNewBrand') || 'Add new brand'}
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
                 </div>
                 <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                  {brands?.map(brand => (
+                  {filteredBrands?.map(brand => (
                     <div
                       key={brand.id}
                       style={{
@@ -2392,7 +2468,28 @@ function VisualEditorSection({
                       }}
                       onClick={() => handleBrandSelect(brand)}
                     >
-                      <span style={{ fontSize: '0.85rem', flex: 1 }}>{brand.name}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                        <span style={{ fontSize: '0.85rem' }}>{brand.name}</span>
+                        <span
+                          style={{
+                            fontSize: '0.6rem',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            background: brand.isTest ? 'rgba(255, 170, 0, 0.12)' : 'rgba(0, 200, 120, 0.12)',
+                            color: brand.isTest ? '#ffaa00' : '#00c878',
+                            fontWeight: '600',
+                            letterSpacing: '0.5px',
+                            textTransform: 'uppercase',
+                            border: brand.isTest ? '1px solid rgba(255, 170, 0, 0.25)' : '1px solid rgba(0, 200, 120, 0.25)'
+                          }}
+                          title={brand.isTest
+                            ? (t('testBrand') || 'Test brand - hidden from frontend')
+                            : (t('productionBrand') || 'Production brand - visible on frontend')
+                          }
+                        >
+                          {brand.isTest ? 'TEST' : 'PROD'}
+                        </span>
+                      </div>
                       <div style={{ display: 'flex', gap: '4px' }}>
                         <button
                           onClick={(e) => {
@@ -2441,19 +2538,10 @@ function VisualEditorSection({
                     </h4>
                     <button
                       onClick={addGroup}
-                      style={{
-                        background: 'var(--primary)',
-                        border: 'none',
-                        color: '#1a1a1a',
-                        cursor: 'pointer',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        fontWeight: 'bold'
-                      }}
+                      style={addButtonStyle}
                       title={t('addNewGroup') || 'Add new group'}
                     >
-                      + {t('addGroup') || 'Add Group'}
+                      <Plus size={16} />
                     </button>
                   </div>
                   {groupsLoading ? (
@@ -2530,21 +2618,10 @@ function VisualEditorSection({
                     </h4>
                     <button
                       onClick={addModel}
-                      style={{
-                        background: 'var(--primary)',
-                        border: 'none',
-                        color: '#1a1a1a',
-                        cursor: 'pointer',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
+                      style={addButtonStyle}
                       title={t('addNewModel') || 'Add new model'}
                     >
-                      <Plus size={12} /> {t('add') || 'Add'}
+                      <Plus size={16} />
                     </button>
                   </div>
                   {modelsLoading ? (
@@ -2635,21 +2712,10 @@ function VisualEditorSection({
                     </h4>
                     <button
                       onClick={addType}
-                      style={{
-                        background: 'var(--primary)',
-                        border: 'none',
-                        color: '#1a1a1a',
-                        cursor: 'pointer',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
+                      style={addButtonStyle}
                       title={t('addNewGeneration') || 'Add new generation'}
                     >
-                      <Plus size={12} /> {t('add') || 'Add'}
+                      <Plus size={16} />
                     </button>
                   </div>
                   {typesLoading ? (
@@ -2740,21 +2806,10 @@ function VisualEditorSection({
                     </h4>
                     <button
                       onClick={addEngine}
-                      style={{
-                        background: 'var(--primary)',
-                        border: 'none',
-                        color: '#1a1a1a',
-                        cursor: 'pointer',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
+                      style={addButtonStyle}
                       title={t('addNewEngine') || 'Add new engine'}
                     >
-                      <Plus size={12} /> {t('add') || 'Add'}
+                      <Plus size={16} />
                     </button>
                   </div>
                   {enginesLoading ? (

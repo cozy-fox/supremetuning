@@ -16,7 +16,7 @@ export async function POST(request) {
   }
 
   try {
-    const { name, logo } = await request.json();
+    const { name, logo, isTest } = await request.json();
 
     if (!name) {
       return NextResponse.json(
@@ -46,7 +46,8 @@ export async function POST(request) {
     const newBrand = {
       name: name.trim(),
       slug,
-      logo: logo || null
+      logo: logo || null,
+      isTest: isTest === true // Default to false (production brand)
     };
 
     const result = await insertOne('brands', newBrand);
@@ -79,7 +80,7 @@ export async function PUT(request) {
   }
 
   try {
-    const { id, name, logo } = await request.json();
+    const { id, name, logo, isTest } = await request.json();
 
     if (!id || !name) {
       return NextResponse.json(
@@ -96,11 +97,16 @@ export async function PUT(request) {
       updateData.logo = logo;
     }
 
+    // Include isTest flag if provided
+    if (isTest !== undefined) {
+      updateData.isTest = isTest === true;
+    }
+
     await updateById('brands', id, updateData);
 
     return NextResponse.json({
       message: 'Brand updated successfully',
-      brand: { id, name: name.trim(), slug, logo: updateData.logo }
+      brand: { id, name: name.trim(), slug, logo: updateData.logo, isTest: updateData.isTest }
     });
   } catch (error) {
     console.error('❌ Update brand error:', error);
