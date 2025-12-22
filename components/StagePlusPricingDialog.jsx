@@ -672,7 +672,7 @@ export default function StagePlusPricingDialog({
                   style={inputStyle}
                   min="0"
                   max="100"
-                  step="1"
+                  step="any"
                 />
               </div>
               <div>
@@ -685,7 +685,7 @@ export default function StagePlusPricingDialog({
                   style={inputStyle}
                   min="0"
                   max="100"
-                  step="1"
+                  step="any"
                 />
               </div>
             </div>

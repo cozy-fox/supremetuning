@@ -111,18 +111,18 @@ export async function GET(request) {
     // Return values based on dataType
     if (dataType === 'power') {
       return NextResponse.json({
-        stage1Value: stage1?.power || null,
-        stage2Value: stage2?.power || null,
-        hasData: !!(stage1?.power || stage2?.power),
+        stage1Value: stage1?.tunedHp || null,
+        stage2Value: stage2?.tunedHp || null,
+        hasData: !!(stage1?.tunedHp || stage2?.tunedHp),
         sampleInfo,
         dataType,
         unit: 'HP'
       });
     } else if (dataType === 'torque') {
       return NextResponse.json({
-        stage1Value: stage1?.torque || null,
-        stage2Value: stage2?.torque || null,
-        hasData: !!(stage1?.torque || stage2?.torque),
+        stage1Value: stage1?.tunedNm || null,
+        stage2Value: stage2?.tunedNm || null,
+        hasData: !!(stage1?.tunedNm || stage2?.tunedNm),
         sampleInfo,
         dataType,
         unit: 'Nm'
@@ -259,8 +259,8 @@ export async function PUT(request) {
     // Get the field name and unit based on dataType
     const getFieldInfo = () => {
       switch (dataType) {
-        case 'power': return { field: 'power', unit: 'HP' };
-        case 'torque': return { field: 'torque', unit: 'Nm' };
+        case 'power': return { field: 'tunedHp', unit: 'HP' };
+        case 'torque': return { field: 'tunedNm', unit: 'Nm' };
         default: return { field: 'price', unit: '€' };
       }
     };

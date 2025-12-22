@@ -603,7 +603,7 @@ export default function BulkUpdateDialog({
                     style={inputStyle}
                     min="0"
                     max="100"
-                    step="0.1"
+                    step="any"
                   />
                 </div>
               </div>
