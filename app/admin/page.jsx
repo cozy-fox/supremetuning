@@ -1395,7 +1395,7 @@ export default function AdminPage() {
   // Bulk update prices/power/torque
   const performBulkPriceUpdate = async ({ level, targetId, groupId, dataType = 'price', updateType, updateData }) => {
     if (operationInProgress) {
-      showToast('Another operation is in progress. Please wait.', 'warning');
+      showToast(t('operationInProgress'), 'warning');
       return;
     }
 
@@ -1414,13 +1414,21 @@ export default function AdminPage() {
         body: JSON.stringify(payload)
       });
 
-      const dataLabel = dataType === 'power' ? 'power values' : dataType === 'torque' ? 'torque values' : 'prices';
-      showToast(`Updated ${result.updatedCount} stage ${dataLabel}`, 'success');
-      setDataMessage({ type: 'success', text: `Updated ${result.updatedCount} stage ${dataLabel}` });
+      // Use translated labels for data types
+      const dataLabel = dataType === 'power'
+        ? t('powerValuesLabel')
+        : dataType === 'torque'
+        ? t('torqueValuesLabel')
+        : t('pricesLabel');
+
+      const successMessage = `${result.updatedCount} ${t('updatedStages')} (${dataLabel})`;
+      showToast(successMessage, 'success');
+      setDataMessage({ type: 'success', text: successMessage });
     } catch (error) {
       console.error('Bulk update failed:', error);
-      showToast('Failed to update: ' + error.message, 'error');
-      setDataMessage({ type: 'error', text: 'Failed to update: ' + error.message });
+      const errorMessage = `${t('failedToUpdate')}: ${error.message}`;
+      showToast(errorMessage, 'error');
+      setDataMessage({ type: 'error', text: errorMessage });
     } finally {
       setOperationInProgress(false);
       endOperation();
