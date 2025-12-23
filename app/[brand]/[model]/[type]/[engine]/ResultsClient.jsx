@@ -173,7 +173,8 @@ function StageSection({ stage, stageIndex, vehicleInfo, isStage2, isAdmin, fetch
               <h2>{vehicleInfo.brand} {vehicleInfo.model}</h2>
               <h3>
                 {isEditing ? editData.stageName : (stage.stageName || 'Stage 1')}
-                <Zap size={20} color="#a8b0b8" />
+                {/* <Zap size={20} color="#a8b0b8" /> */}
+                <img src="/assets/logo.png" alt="Supreme Tuning Logo" width={30} />
               </h3>
             </div>
             {isAdmin && !isEditing && (
@@ -449,7 +450,9 @@ function StageSection({ stage, stageIndex, vehicleInfo, isStage2, isAdmin, fetch
               fontSize: '13px',
               fontWeight: '600'
             }}>
-              <Zap size={16} /> {t('gearboxTuningIncluded')}
+              {/* <Zap size={16} /> {t('gearboxTuningIncluded')} */}
+              <img src="/assets/logo.png" alt="Supreme Tuning Logo" width={25} />
+              {t('gearboxTuningIncluded')}
             </h4>
             <p style={{ fontSize: '12px', color: '#b0b0b0', lineHeight: '1.5', margin: 0 }}>
               {t('gearboxTuningDescription')}

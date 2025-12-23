@@ -9,7 +9,8 @@ export default function HeroSection() {
   return (
     <div className="hero-section">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
-        <Zap size={32} color="var(--primary)" />
+        {/* <Zap size={32} color="var(--primary)" /> */}
+        <img src="/assets/logo.png" alt="Supreme Tuning Logo" width={50} />
         <h1>{t('chiptuningCalculator')}</h1>
       </div>
       <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto' }}>

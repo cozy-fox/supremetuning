@@ -226,7 +226,8 @@ export default function BrandSelector({
                 } else if (groupName === 'AMG') {
                   return <MercedesAMGLogo size={logoSize} />;
                 }
-                return <Zap size={18} style={{ filter: 'drop-shadow(0 0 4px currentColor)' }} />;
+                // return <Zap size={18} style={{ filter: 'drop-shadow(0 0 4px currentColor)' }} />;
+                return <img src="/assets/logo.png" alt="Supreme Tuning Logo" width={30} style={{ filter: 'drop-shadow(0 0 4px currentColor)' }}/>
               };
 
               return (
